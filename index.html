@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Portal Absensi Store</title>
     
-    <!-- PWA & Mobile Native Meta Tags -->
+    <!-- PWA & Mobile Native Meta -->
     <meta name="theme-color" content="#4f46e5">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,7 +19,7 @@
 </head>
 <body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none relative">
 
-    <!-- Container Utama Aplikasi Absensi Harian -->
+    <!-- Container Utama Aplikasi -->
     <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[94vh] max-h-[900px]">
         
         <!-- Header -->
@@ -28,12 +28,19 @@
                 <h1 class="text-base sm:text-lg font-bold tracking-tight">Portal Absensi Store</h1>
                 <p class="text-[11px] text-indigo-200" id="current-date">Memuat tanggal...</p>
             </div>
-            <div class="bg-indigo-500/80 backdrop-blur px-3 py-1 rounded-full text-[11px] font-semibold border border-indigo-300">
-                Sales Active
-            </div>
+            <!-- Tombol Rahasia Portal HR Admin -->
+            <button onclick="openHRPortalModal()" class="bg-indigo-500/90 hover:bg-indigo-400 active:scale-95 px-3 py-1 rounded-full text-[11px] font-semibold border border-indigo-300 flex items-center gap-1 cursor-pointer transition">
+                <span>🔑 Portal HR</span>
+            </button>
         </div>
 
-        <!-- Konten Utama -->
+        <!-- Offline Queue Banner (Indikator Sinyal) -->
+        <div id="offline-banner" class="hidden bg-amber-500 text-white px-3 py-1.5 text-[11px] font-bold text-center flex justify-between items-center shrink-0">
+            <span id="offline-banner-text">🟠 Mode Offline: Data tersimpan di HP</span>
+            <button onclick="syncOfflineQueue()" class="underline text-[10px] bg-amber-600 px-2 py-0.5 rounded cursor-pointer">Sync Sekarang</button>
+        </div>
+
+        <!-- Konten Utama (Absensi Sales) -->
         <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-3.5">
             
             <!-- Live Clock Widget -->
@@ -70,7 +77,7 @@
                 </div>
             </div>
 
-            <!-- Mandatory Foto Selfie Absensi Normal -->
+            <!-- Mandatory Foto Selfie -->
             <div class="space-y-1">
                 <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
                     <span>Foto Selfie Presensi Harian</span>
@@ -106,11 +113,8 @@
                 <div class="flex-grow border-t border-slate-200"></div>
             </div>
 
-            <!-- Tombol Buka Modal Pengajuan -->
+            <!-- Tombol Modal Form Pengajuan -->
             <button onclick="openModalPengajuan()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs flex items-center justify-center gap-2 cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
                 <span>Form Pengajuan (Sakit / Izin / Cuti)</span>
             </button>
 
@@ -118,88 +122,119 @@
 
         <!-- Footer -->
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v2.7 PWA
+            Absensi Retail App • Multi-Store v3.0 Offline-First + HR Portal
         </div>
 
     </div>
 
 
     <!-- ========================================================================= -->
-    <!-- MODAL POP-UP FORM PENGAJUKAN (SAKIT / IZIN / CUTI) -->
+    <!-- MODAL 1: FORM PENGAJUKAN SAKIT/IZIN/CUTI -->
     <!-- ========================================================================= -->
     <div id="modal-pengajuan" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-            
-            <!-- Modal Header -->
             <div class="bg-amber-500 text-white p-4 flex justify-between items-center shrink-0">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                    </svg>
-                    <h3 class="font-bold text-sm">Form Pengajuan Ketidakhadiran</h3>
-                </div>
-                <button onclick="closeModalPengajuan()" class="text-white hover:bg-amber-600 rounded-full p-1 cursor-pointer">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                </button>
+                <h3 class="font-bold text-sm">Form Pengajuan Ketidakhadiran</h3>
+                <button onclick="closeModalPengajuan()" class="text-white hover:bg-amber-600 rounded-full p-1 cursor-pointer">✕</button>
             </div>
-
-            <!-- Modal Body (Scrollable) -->
             <div class="p-4 space-y-3.5 overflow-y-auto flex-1">
-                
-                <!-- Info Sales Ringkas -->
                 <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-900">
                     <p class="font-semibold" id="modal-info-sales">Sales: -</p>
                     <p class="text-[11px] text-amber-700" id="modal-info-store">Store: -</p>
                 </div>
-
-                <!-- Input 1: Jenis Pengajuan -->
                 <div class="space-y-1">
-                    <label for="modal-select-tipe" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jenis Pengajuan</label>
-                    <select id="modal-select-tipe" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 bg-slate-50 text-slate-800">
+                    <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jenis Pengajuan</label>
+                    <select id="modal-select-tipe" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold bg-slate-50 text-slate-800">
                         <option value="Sakit">Sakit (Wajib Lampirkan SKD)</option>
                         <option value="Izin">Izin Keperluan Penting</option>
                         <option value="Cuti">Cuti Tahunan</option>
                         <option value="Tugas Luar">Tugas Luar Store</option>
                     </select>
                 </div>
-
-                <!-- Input 2: Alasan / Catatan Detail -->
                 <div class="space-y-1">
-                    <label for="modal-input-alasan" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
-                        <span>Detail Alasan / Catatan</span>
-                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB ISI</span>
+                    <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
+                        <span>Detail Alasan</span>
+                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB</span>
                     </label>
-                    <textarea id="modal-input-alasan" rows="3" placeholder="Jelaskan alasan pengajuan secara detail (contoh: Demam tinggi sejak pagi, istirahat dokter 2 hari)..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 bg-slate-50 text-slate-800"></textarea>
+                    <textarea id="modal-input-alasan" rows="3" placeholder="Jelaskan alasan pengajuan secara detail..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800"></textarea>
                 </div>
-
-                <!-- Input 3: Foto Surat Dokter / Bukti Pengajuan -->
                 <div class="space-y-1">
                     <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
                         <span>Foto Surat Dokter / Bukti</span>
-                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB BUKTI</span>
+                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB</span>
                     </label>
                     <div class="border-2 border-dashed border-amber-300 rounded-xl p-2.5 text-center bg-amber-50/50 relative hover:bg-amber-100/50 transition">
                         <input type="file" accept="image/*" capture="user" id="modal-camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewAndCompressModalImage(event)">
                         <div id="modal-camera-placeholder" class="space-y-1 py-1">
-                            <svg class="w-6 h-6 mx-auto text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                            </svg>
-                            <p class="text-xs text-amber-800 font-medium">Tap untuk Ambil Foto Surat Dokter / Bukti</p>
+                            <p class="text-xs text-amber-800 font-medium">Tap untuk Ambil Foto Bukti</p>
                         </div>
                         <img id="modal-image-preview" class="hidden w-full h-28 object-cover rounded-lg mx-auto" alt="Preview Bukti">
                     </div>
                 </div>
+            </div>
+            <div class="p-3 bg-slate-50 border-t border-slate-200 flex gap-2 shrink-0">
+                <button onclick="closeModalPengajuan()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">Batal</button>
+                <button id="btn-submit-modal" onclick="submitModalPengajuan()" class="w-2/3 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">Kirim Pengajuan</button>
+            </div>
+        </div>
+    </div>
 
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 2: PORTAL ADMIN & MONITORING APPROVAL HR -->
+    <!-- ========================================================================= -->
+    <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col h-[88vh] max-h-[800px] animate-in fade-in zoom-in duration-200">
+            
+            <!-- Header Modal HR -->
+            <div class="bg-indigo-700 text-white p-4 flex justify-between items-center shrink-0">
+                <div>
+                    <h3 class="font-bold text-sm">Dashboard Monitoring HR</h3>
+                    <p class="text-[10px] text-indigo-200">Approval & Live Store Attendance</p>
+                </div>
+                <button onclick="closeHRPortalModal()" class="text-white hover:bg-indigo-800 rounded-full p-1 cursor-pointer">✕</button>
             </div>
 
-            <!-- Modal Footer (Tombol Kirim) -->
-            <div class="p-3 bg-slate-50 border-t border-slate-200 flex gap-2 shrink-0">
-                <button onclick="closeModalPengajuan()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
-                    Batal
-                </button>
-                <button id="btn-submit-modal" onclick="submitModalPengajuan()" class="w-2/3 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition cursor-pointer">
-                    Kirim Pengajuan
-                </button>
+            <!-- PIN Security Screen (Jika Belum Login PIN) -->
+            <div id="hr-pin-screen" class="p-6 flex flex-col justify-center items-center flex-1 space-y-4">
+                <div class="text-center space-y-1">
+                    <h4 class="font-bold text-slate-800 text-sm">Akses Terkunci Admin HR</h4>
+                    <p class="text-xs text-slate-500">Masukkan PIN Keamanan untuk membuka dashboard</p>
+                </div>
+                <input type="password" id="hr-pin-input" maxlength="6" placeholder="Masukkan PIN" class="w-36 text-center text-lg tracking-widest font-bold px-3 py-2 border-2 border-indigo-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50">
+                <button onclick="verifyHRPin()" class="w-36 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-xs shadow-md">Buka Portal</button>
+            </div>
+
+            <!-- Dashboard Content Screen (Setelah PIN Valid) -->
+            <div id="hr-dashboard-screen" class="hidden flex-1 overflow-y-auto p-4 space-y-4">
+                
+                <!-- Live Summary Counter Hari Ini -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
+                        <p class="text-[9px] font-bold text-emerald-600 uppercase">Hadir (In)</p>
+                        <p id="hr-count-in" class="text-xl font-extrabold text-emerald-800">0</p>
+                    </div>
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-center">
+                        <p class="text-[9px] font-bold text-rose-600 uppercase">Pulang (Out)</p>
+                        <p id="hr-count-out" class="text-xl font-extrabold text-rose-800">0</p>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-center">
+                        <p class="text-[9px] font-bold text-amber-600 uppercase">Pengajuan</p>
+                        <p id="hr-count-leave" class="text-xl font-extrabold text-amber-800">0</p>
+                    </div>
+                </div>
+
+                <!-- Daftar Transaksi & Pengajuan Hari Ini -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between items-center">
+                        <span>Aktivitas & Approval (Hari Ini)</span>
+                        <button onclick="fetchAdminHRData()" class="text-[10px] text-indigo-600 hover:underline">Refresh 🔄</button>
+                    </h4>
+                    <div id="hr-approval-list" class="space-y-2">
+                        <p class="text-xs text-slate-400 text-center py-4">Memuat data real-time...</p>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -207,15 +242,34 @@
 
 
     <!-- ========================================================================= -->
-    <!-- SCRIPT APLIKASI -->
+    <!-- SCRIPT APLIKASI (OFFLINE-FIRST + HR PORTAL) -->
     <!-- ========================================================================= -->
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysnYJNbtypJLXnG9OzVJF7Q9X1uMl9kjqzR_ukg-Jnq4GKGNHnbOAQbqrPd3FEvfu0/exec';
+        const HR_PIN = "1234"; // PIN Akses HR Admin
 
         let masterStores = [];
         let masterKaryawan = [];
         let compressedBase64Photo = "";
         let modalCompressedBase64Photo = "";
+        let db;
+
+        // Inisialisasi IndexedDB Offline-First Queue
+        const request = indexedDB.open("AbsensiOfflineDB", 1);
+        request.onupgradeneeded = function(e) {
+            db = e.target.result;
+            if (!db.objectStoreNames.contains("offline_queue")) {
+                db.createObjectStore("offline_queue", { keyPath: "id", autoIncrement: true });
+            }
+        };
+        request.onsuccess = function(e) {
+            db = e.target.result;
+            updateOfflineBadge();
+            if (navigator.onLine) syncOfflineQueue();
+        };
+
+        window.addEventListener('online', syncOfflineQueue);
+        window.addEventListener('offline', updateOfflineBadge);
 
         setInterval(() => {
             const now = new Date();
@@ -271,16 +325,13 @@
             try {
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
-                
                 if (data.status === "success") {
                     masterStores = data.stores || [];
                     masterKaryawan = data.karyawan || [];
                     populateStoreDropdown();
-                } else {
-                    selectStore.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
                 }
             } catch (err) {
-                selectStore.innerHTML = '<option value="">-- Error Koneksi Server --</option>';
+                selectStore.innerHTML = '<option value="">-- Mode Offline / Sinyal Lemah --</option>';
             }
         }
 
@@ -298,7 +349,6 @@
         function onStoreChange() {
             const storeSelect = document.getElementById('select-store');
             const storeId = storeSelect.value;
-            
             const selectEmp = document.getElementById('select-employee');
             selectEmp.innerHTML = '';
             
@@ -326,10 +376,7 @@
 
         function checkUserAttendanceState() {
             const karyawanNama = document.getElementById('select-employee').value;
-            if (!karyawanNama) {
-                resetAttendanceStateUI();
-                return;
-            }
+            if (!karyawanNama) { resetAttendanceStateUI(); return; }
 
             const todayKey = new Date().toISOString().split('T')[0];
             const stateKey = `attendance_${karyawanNama}_${todayKey}`;
@@ -342,18 +389,15 @@
             if (lastState === 'Clock In') {
                 statusBadge.innerText = 'Sudah Clock In';
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
-                btnIn.disabled = true;
-                btnOut.disabled = false;
+                btnIn.disabled = true; btnOut.disabled = false;
             } else if (lastState === 'Clock Out') {
                 statusBadge.innerText = 'Sudah Clock Out (Selesai)';
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
-                btnIn.disabled = true;
-                btnOut.disabled = true;
+                btnIn.disabled = true; btnOut.disabled = true;
             } else if (lastState && lastState.includes('Pengajuan')) {
                 statusBadge.innerText = `Pengajuan (${lastState.replace('Pengajuan: ', '')})`;
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
-                btnIn.disabled = true;
-                btnOut.disabled = true;
+                btnIn.disabled = true; btnOut.disabled = true;
             } else {
                 resetAttendanceStateUI();
             }
@@ -366,11 +410,9 @@
             document.getElementById('btn-clock-out').disabled = false;
         }
 
-        // Preview & Kompresi Foto Layar Utama
         function previewAndCompressImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(e) {
@@ -380,28 +422,21 @@
                     const canvas = document.createElement('canvas');
                     const MAX_WIDTH = 600;
                     const scale = MAX_WIDTH / img.width;
-
                     canvas.width = MAX_WIDTH;
                     canvas.height = img.height * scale;
-
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
                     compressedBase64Photo = canvas.toDataURL('image/jpeg', 0.6);
-
-                    const output = document.getElementById('image-preview');
-                    output.src = compressedBase64Photo;
-                    output.classList.remove('hidden');
+                    document.getElementById('image-preview').src = compressedBase64Photo;
+                    document.getElementById('image-preview').classList.remove('hidden');
                     document.getElementById('camera-placeholder').classList.add('hidden');
                 };
             };
         }
 
-        // Preview & Kompresi Foto Modal Form
         function previewAndCompressModalImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(e) {
@@ -411,130 +446,90 @@
                     const canvas = document.createElement('canvas');
                     const MAX_WIDTH = 600;
                     const scale = MAX_WIDTH / img.width;
-
                     canvas.width = MAX_WIDTH;
                     canvas.height = img.height * scale;
-
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
                     modalCompressedBase64Photo = canvas.toDataURL('image/jpeg', 0.6);
-
-                    const output = document.getElementById('modal-image-preview');
-                    output.src = modalCompressedBase64Photo;
-                    output.classList.remove('hidden');
+                    document.getElementById('modal-image-preview').src = modalCompressedBase64Photo;
+                    document.getElementById('modal-image-preview').classList.remove('hidden');
                     document.getElementById('modal-camera-placeholder').classList.add('hidden');
                 };
             };
         }
 
-        // LOGIKA KONTROL MODAL FORM PENGAJUKAN
-        function openModalPengajuan() {
-            const storeSelect = document.getElementById('select-store');
-            const karyawanNama = document.getElementById('select-employee').value;
-            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
-
-            if (!storeSelect.value) {
-                alert("Harap pilih Store lokasi kerja Anda terlebih dahulu!");
-                return;
-            }
-            if (!karyawanNama) {
-                alert("Harap pilih Nama Sales Anda terlebih dahulu!");
-                return;
-            }
-
-            document.getElementById('modal-info-sales').innerText = `Sales: ${karyawanNama}`;
-            document.getElementById('modal-info-store').innerText = `Store: ${storeNama}`;
-            document.getElementById('modal-pengajuan').classList.remove('hidden');
-        }
-
-        function closeModalPengajuan() {
-            document.getElementById('modal-pengajuan').classList.add('hidden');
-        }
-
-        // SUBMIT PENGAJUKAN DARI MODAL POP-UP
-        async function submitModalPengajuan() {
-            const storeSelect = document.getElementById('select-store');
-            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
-            const karyawanNama = document.getElementById('select-employee').value;
-            const tipePengajuan = document.getElementById('modal-select-tipe').value;
-            const alasanInput = document.getElementById('modal-input-alasan').value.trim();
-            const gps = document.getElementById('gps-status').innerText;
-
-            if (!alasanInput) {
-                alert("HARAP ISI ALASAN! Jelaskan detail alasan pengajuan Anda.");
-                return;
-            }
-            if (!modalCompressedBase64Photo) {
-                alert("FOTO BUKTI WAJIB UNTUK PENGAJUKAN! Harap ambil foto surat dokter / bukti pendukung.");
-                return;
-            }
-
-            const statusFormatted = `Pengajuan: ${tipePengajuan}`;
-
-            const payload = {
-                storeNama: storeNama,
-                karyawanNama: karyawanNama,
-                shiftNama: "-",
-                status: statusFormatted,
-                catatan: alasanInput,
-                gps: gps,
-                fotoBase64: modalCompressedBase64Photo
+        // SIMPAN PENGERJAAN OFFLINE KE INDEXEDDB
+        function saveToOfflineQueue(payload) {
+            if (!db) return;
+            const tx = db.transaction("offline_queue", "readwrite");
+            const store = tx.objectStore("offline_queue");
+            store.add(payload);
+            tx.oncomplete = function() {
+                updateOfflineBadge();
+                alert(`MODE OFFLINE TERDETEKSI!\nData ${payload.status} tersimpan secara aman di HP Anda. Data akan otomatis dikirim ke server saat Anda terhubung ke internet.`);
             };
-
-            const btnSubmitModal = document.getElementById('btn-submit-modal');
-            btnSubmitModal.disabled = true;
-            btnSubmitModal.innerText = "Mengirim...";
-
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const todayKey = new Date().toISOString().split('T')[0];
-                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, statusFormatted);
-
-                alert(`Berhasil Mengirim ${statusFormatted}!\nSales: ${karyawanNama}\nStore: ${storeNama}\nAlasan: ${alasanInput}`);
-                
-                closeModalPengajuan();
-                checkUserAttendanceState();
-
-            } catch (err) {
-                alert("Gagal mengirim data pengajuan ke server.");
-            } finally {
-                btnSubmitModal.disabled = false;
-                btnSubmitModal.innerText = "Kirim Pengajuan";
-            }
         }
 
-        // SUBMIT ABSENSI NORMAL (CLOCK IN / CLOCK OUT)
+        // SINKRONISASI OTOMATIS ANTREAN OFFLINE
+        function syncOfflineQueue() {
+            if (!db || !navigator.onLine) return;
+            const tx = db.transaction("offline_queue", "readwrite");
+            const store = tx.objectStore("offline_queue");
+            const req = store.getAll();
+
+            req.onsuccess = async function() {
+                const items = req.result;
+                if (items.length === 0) { updateOfflineBadge(); return; }
+
+                for (const item of items) {
+                    try {
+                        await fetch(SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(item)
+                        });
+                        const delTx = db.transaction("offline_queue", "readwrite");
+                        delTx.objectStore("offline_queue").delete(item.id);
+                    } catch (err) {
+                        break;
+                    }
+                }
+                updateOfflineBadge();
+            };
+        }
+
+        function updateOfflineBadge() {
+            if (!db) return;
+            const tx = db.transaction("offline_queue", "readonly");
+            const store = tx.objectStore("offline_queue");
+            const req = store.count();
+
+            req.onsuccess = function() {
+                const count = req.result;
+                const banner = document.getElementById('offline-banner');
+                const text = document.getElementById('offline-banner-text');
+                if (count > 0) {
+                    banner.classList.remove('hidden');
+                    text.innerText = `🟠 Mode Offline: ${count} Data tersimpan di HP`;
+                } else {
+                    banner.classList.add('hidden');
+                }
+            };
+        }
+
         async function submitAttendance(type) {
             const storeSelect = document.getElementById('select-store');
             const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
             const karyawanNama = document.getElementById('select-employee').value;
             const gps = document.getElementById('gps-status').innerText;
 
-            if (!storeSelect.value) {
-                alert("Harap pilih Store lokasi kerja Anda!");
-                return;
-            }
-            if (!karyawanNama) {
-                alert("Harap pilih Nama Sales Anda!");
-                return;
-            }
-            if (!compressedBase64Photo) {
-                alert("FOTO WAJIB DIAMBIL! Harap ambil foto selfie terlebih dahulu sebelum absen.");
-                return;
-            }
-            if (gps.includes("Ditolak") || gps.includes("Mendeteksi") || gps.includes("Tidak Didukung")) {
-                alert("Harap tunggu lokasi GPS terdeteksi atau aktifkan akses lokasi di browser!");
-                return;
-            }
+            if (!storeSelect.value) { alert("Harap pilih Store lokasi kerja Anda!"); return; }
+            if (!karyawanNama) { alert("Harap pilih Nama Sales Anda!"); return; }
+            if (!compressedBase64Photo) { alert("FOTO WAJIB DIAMBIL!"); return; }
 
             const payload = {
+                timestamp: new Date().toISOString(),
                 storeNama: storeNama,
                 karyawanNama: karyawanNama,
                 shiftNama: "-",
@@ -544,31 +539,192 @@
                 fotoBase64: compressedBase64Photo
             };
 
-            const btnIn = document.getElementById('btn-clock-in');
-            const btnOut = document.getElementById('btn-clock-out');
-            btnIn.disabled = true;
-            btnOut.disabled = true;
+            const todayKey = new Date().toISOString().split('T')[0];
+            localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, type);
+
+            if (!navigator.onLine) {
+                saveToOfflineQueue(payload);
+                checkUserAttendanceState();
+                return;
+            }
 
             try {
                 alert(`Mengirim data ${type}... Mohon tunggu.`);
-                
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
-                const todayKey = new Date().toISOString().split('T')[0];
-                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, type);
-
                 alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}`);
                 checkUserAttendanceState();
-
             } catch (err) {
-                alert("Gagal mengirim data ke server.");
-                btnIn.disabled = false;
-                btnOut.disabled = false;
+                saveToOfflineQueue(payload);
+                checkUserAttendanceState();
+            }
+        }
+
+        function openModalPengajuan() {
+            const storeSelect = document.getElementById('select-store');
+            const karyawanNama = document.getElementById('select-employee').value;
+            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
+
+            if (!storeSelect.value || !karyawanNama) {
+                alert("Harap pilih Store dan Nama Sales terlebih dahulu!");
+                return;
+            }
+            document.getElementById('modal-info-sales').innerText = `Sales: ${karyawanNama}`;
+            document.getElementById('modal-info-store').innerText = `Store: ${storeNama}`;
+            document.getElementById('modal-pengajuan').classList.remove('hidden');
+        }
+
+        function closeModalPengajuan() { document.getElementById('modal-pengajuan').classList.add('hidden'); }
+
+        async function submitModalPengajuan() {
+            const storeSelect = document.getElementById('select-store');
+            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
+            const karyawanNama = document.getElementById('select-employee').value;
+            const tipePengajuan = document.getElementById('modal-select-tipe').value;
+            const alasanInput = document.getElementById('modal-input-alasan').value.trim();
+            const gps = document.getElementById('gps-status').innerText;
+
+            if (!alasanInput || !modalCompressedBase64Photo) {
+                alert("Alasan dan Foto Bukti WAJIB diisi!");
+                return;
+            }
+
+            const statusFormatted = `Pengajuan: ${tipePengajuan}`;
+            const payload = {
+                timestamp: new Date().toISOString(),
+                storeNama: storeNama,
+                karyawanNama: karyawanNama,
+                shiftNama: "-",
+                status: statusFormatted,
+                catatan: alasanInput,
+                gps: gps,
+                fotoBase64: modalCompressedBase64Photo
+            };
+
+            const todayKey = new Date().toISOString().split('T')[0];
+            localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, statusFormatted);
+
+            closeModalPengajuan();
+
+            if (!navigator.onLine) {
+                saveToOfflineQueue(payload);
+                checkUserAttendanceState();
+                return;
+            }
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                alert(`Berhasil Mengirim ${statusFormatted}!`);
+                checkUserAttendanceState();
+            } catch (err) {
+                saveToOfflineQueue(payload);
+                checkUserAttendanceState();
+            }
+        }
+
+        // KONTROL PORTAL ADMIN HR
+        function openHRPortalModal() {
+            document.getElementById('modal-hr-portal').classList.remove('hidden');
+        }
+
+        function closeModalHRPortalModal() {
+            document.getElementById('modal-hr-portal').classList.add('hidden');
+        }
+
+        function verifyHRPin() {
+            const inputPin = document.getElementById('hr-pin-input').value;
+            if (inputPin === HR_PIN) {
+                document.getElementById('hr-pin-screen').classList.add('hidden');
+                document.getElementById('hr-dashboard-screen').classList.remove('hidden');
+                fetchAdminHRData();
+            } else {
+                alert("PIN SALAH! Akses Ditolak.");
+            }
+        }
+
+        async function fetchAdminHRData() {
+            const container = document.getElementById('hr-approval-list');
+            container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Memuat data live...</p>';
+
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=admin`);
+                const data = await res.json();
+
+                if (data.status === "success") {
+                    const logs = data.logs || [];
+                    
+                    // Count Stats
+                    let countIn = 0, countOut = 0, countLeave = 0;
+                    logs.forEach(l => {
+                        if (l.status === 'Clock In') countIn++;
+                        else if (l.status === 'Clock Out') countOut++;
+                        else countLeave++;
+                    });
+
+                    document.getElementById('hr-count-in').innerText = countIn;
+                    document.getElementById('hr-count-out').innerText = countOut;
+                    document.getElementById('hr-count-leave').innerText = countLeave;
+
+                    if (logs.length === 0) {
+                        container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Belum ada transaksi absen hari ini.</p>';
+                        return;
+                    }
+
+                    container.innerHTML = '';
+                    logs.reverse().forEach(log => {
+                        const isLeave = log.status.includes('Pengajuan');
+                        const itemHtml = `
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
+                                <div class="flex justify-between font-bold text-slate-800">
+                                    <span>${log.karyawan}</span>
+                                    <span class="${isLeave ? 'text-amber-600' : 'text-indigo-600'}">${log.status}</span>
+                                </div>
+                                <div class="text-slate-500 text-[11px] space-y-0.5">
+                                    <p>🏬 Store: ${log.store}</p>
+                                    ${log.catatan !== '-' ? `<p class="italic text-slate-700">📝 Note: "${log.catatan}"</p>` : ''}
+                                    <p>📍 GPS: ${log.gps}</p>
+                                    ${log.fotoUrl.includes('http') ? `<p><a href="${log.fotoUrl}" target="_blank" class="text-indigo-600 font-semibold underline">🖼️ Lihat Bukti Foto Drive</a></p>` : ''}
+                                </div>
+                                ${isLeave ? `
+                                    <div class="pt-1 flex justify-between items-center border-t border-slate-200">
+                                        <span class="text-[10px] font-bold text-slate-500">Status: ${log.approvalStatus}</span>
+                                        <div class="flex gap-1">
+                                            <button onclick="updateHRApproval(${log.rowId}, 'Approved')" class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">Approve ✅</button>
+                                            <button onclick="updateHRApproval(${log.rowId}, 'Rejected')" class="bg-rose-600 text-white px-2 py-1 rounded text-[10px] font-bold">Reject ❌</button>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                        container.insertAdjacentHTML('beforeend', itemHtml);
+                    });
+                }
+            } catch (err) {
+                container.innerHTML = '<p class="text-xs text-rose-500 text-center py-4">Gagal memuat data admin HR.</p>';
+            }
+        }
+
+        async function updateHRApproval(rowId, statusVal) {
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "update_approval", rowId: rowId, approvalStatus: statusVal })
+                });
+                alert(`Berhasil memperbarui pengajuan menjadi: ${statusVal}`);
+                fetchAdminHRData();
+            } catch (err) {
+                alert("Gagal memperbarui status approval.");
             }
         }
     </script>

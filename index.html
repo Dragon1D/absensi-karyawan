@@ -120,14 +120,32 @@
             await fetchMasterData();
         };
 
+        // Fungsi GPS dengan Reverse Geocoding (Nama Lokasi)
         function initGPS() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => {
+                    async (pos) => {
                         const lat = pos.coords.latitude.toFixed(5);
                         const lon = pos.coords.longitude.toFixed(5);
-                        document.getElementById('gps-status').innerText = `${lat}, ${lon}`;
-                        document.getElementById('gps-status').className = "text-emerald-600 font-semibold text-xs";
+                        
+                        const gpsElem = document.getElementById('gps-status');
+                        gpsElem.innerText = "Menerjemahkan alamat...";
+                        gpsElem.className = "text-amber-600 font-semibold text-xs animate-pulse";
+
+                        try {
+                            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=id`);
+                            const data = await res.json();
+
+                            const area = [data.locality || data.city, data.principalSubdivision].filter(Boolean).join(', ');
+                            const addressText = area ? `${area} (${lat}, ${lon})` : `${lat}, ${lon}`;
+
+                            gpsElem.innerText = addressText;
+                            gpsElem.className = "text-emerald-600 font-semibold text-xs truncate max-w-[200px]";
+                            gpsElem.title = addressText;
+                        } catch (err) {
+                            gpsElem.innerText = `${lat}, ${lon}`;
+                            gpsElem.className = "text-emerald-600 font-semibold text-xs";
+                        }
                     },
                     (err) => {
                         document.getElementById('gps-status').innerText = "GPS Ditolak / Off";

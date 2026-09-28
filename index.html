@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Absensi Sales Store</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Inter', sans-serif; } </style>
@@ -26,7 +27,7 @@
         <!-- Konten Utama -->
         <div class="p-5 flex-1 overflow-y-auto space-y-4">
             
-            <!-- Live Clock -->
+            <!-- Live Clock Widget -->
             <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 text-center">
                 <p class="text-xs text-indigo-500 font-semibold uppercase tracking-wider">Waktu Saat Ini</p>
                 <h2 class="text-3xl font-extrabold text-indigo-900 mt-0.5" id="live-clock">00:00:00</h2>
@@ -48,7 +49,7 @@
                 </select>
             </div>
 
-            <!-- Status & GPS -->
+            <!-- Status & GPS Panel -->
             <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm space-y-2">
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-slate-500">Status Hari Ini:</span>
@@ -73,7 +74,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <p class="text-xs text-slate-500" id="photo-label">Tap untuk Ambil Foto Selfie</p>
+                        <p class="text-xs text-slate-500">Tap untuk Ambil Foto Selfie</p>
                     </div>
                     <img id="image-preview" class="hidden w-full h-32 object-cover rounded-lg mx-auto" alt="Preview Foto Selfie">
                 </div>
@@ -99,6 +100,7 @@
     </div>
 
     <script>
+        // URL WEB APP GOOGLE APPS SCRIPT
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysnYJNbtypJLXnG9OzVJF7Q9X1uMl9kjqzR_ukg-Jnq4GKGNHnbOAQbqrPd3FEvfu0/exec';
 
         let masterStores = [];

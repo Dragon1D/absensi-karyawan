@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Absensi Karyawan</title>
-    <!-- Tailwind CSS untuk Styling Cepat & Rapi -->
+    <title>Aplikasi Absensi Sales Store</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Font Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,40 +14,50 @@
 </head>
 <body class="bg-slate-100 flex justify-center items-center min-h-screen p-4">
 
-    <!-- Container Utama (Ukuran Layar Mobile) -->
+    <!-- Container utama -->
     <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[90vh] max-h-[850px]">
         
         <!-- Header Profil -->
-        <div class="bg-indigo-600 text-white p-5 flex justify-between items-center">
+        <div class="bg-indigo-600 text-white p-5 flex justify-between items-center shrink-0">
             <div>
-                <h1 class="text-lg font-bold">Portal Absensi</h1>
+                <h1 class="text-lg font-bold">Portal Absensi Store</h1>
                 <p class="text-xs text-indigo-200" id="current-date">Memuat tanggal...</p>
             </div>
             <div class="bg-indigo-500 px-3 py-1 rounded-full text-xs font-medium border border-indigo-400">
-                Karyawan Aktif
+                Sales Active
             </div>
         </div>
 
         <!-- Konten Utama (Scrollable) -->
-        <div class="p-5 flex-1 overflow-y-auto space-y-5">
+        <div class="p-5 flex-1 overflow-y-auto space-y-4">
             
             <!-- Live Clock Widget -->
-            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
+            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 text-center">
                 <p class="text-xs text-indigo-500 font-semibold uppercase tracking-wider">Waktu Saat Ini</p>
-                <h2 class="text-3xl font-extrabold text-indigo-900 mt-1" id="live-clock">00:00:00</h2>
+                <h2 class="text-3xl font-extrabold text-indigo-900 mt-0.5" id="live-clock">00:00:00</h2>
             </div>
 
-            <!-- Input Nama Karyawan (Baru) -->
+            <!-- Dropdown 1: Pilih Store -->
             <div class="space-y-1">
-                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Nama / ID Karyawan</label>
-                <input type="text" id="employee-name" placeholder="Masukkan Nama Lengkap Anda" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50">
+                <label for="select-store" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Cabang / Store</label>
+                <select id="select-store" onchange="onStoreChange()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-medium text-slate-800 transition">
+                    <option value="">-- Memuat Daftar Store... --</option>
+                </select>
             </div>
 
-            <!-- Panel Status Absen -->
-            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+            <!-- Dropdown 2: Pilih Sales / Karyawan -->
+            <div class="space-y-1">
+                <label for="select-employee" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Nama Sales / Karyawan</label>
+                <select id="select-employee" disabled class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 font-medium text-slate-500 disabled:cursor-not-allowed transition">
+                    <option value="">-- Pilih Store Terlebih Dahulu --</option>
+                </select>
+            </div>
+
+            <!-- Status & GPS Panel -->
+            <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm space-y-2">
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-slate-500">Status Hari Ini:</span>
-                    <span id="attendance-status" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Belum Absen</span>
+                    <span id="attendance-status" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Belum Absen</span>
                 </div>
                 <div class="flex justify-between items-center text-sm">
                     <span class="text-slate-500">Lokasi GPS:</span>
@@ -56,130 +66,210 @@
             </div>
 
             <!-- Kamera / Bukti Foto -->
-            <div class="space-y-2">
-                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Verifikasi Foto Wajah</label>
-                <div class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50 relative">
-                    <input type="file" accept="image/*" capture="user" id="camera-input" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(event)">
-                    <div id="camera-placeholder" class="space-y-2">
-                        <svg class="w-8 h-8 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        <p class="text-xs text-slate-500">Tap untuk Ambil Foto / Selfie</p>
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Verifikasi Foto Selfie</label>
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-3 text-center bg-slate-50 relative hover:bg-slate-100 transition">
+                    <input type="file" accept="image/*" capture="user" id="camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewImage(event)">
+                    <div id="camera-placeholder" class="space-y-1">
+                        <svg class="w-7 h-7 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        <p class="text-xs text-slate-500">Tap untuk Ambil Foto Selfie</p>
                     </div>
-                    <img id="image-preview" class="hidden w-full h-36 object-cover rounded-lg mx-auto" alt="Preview">
+                    <img id="image-preview" class="hidden w-full h-32 object-cover rounded-lg mx-auto" alt="Preview Foto Selfie">
                 </div>
             </div>
 
-            <!-- Tombol Aksi (Clock In / Out) -->
-            <div class="grid grid-cols-2 gap-3 pt-2">
-                <button onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2 cursor-pointer">
+            <!-- Tombol Clock In / Out -->
+            <div class="grid grid-cols-2 gap-3 pt-1">
+                <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                     <span>Clock In</span>
                 </button>
-                <button onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2 cursor-pointer">
+                <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                     <span>Clock Out</span>
                 </button>
             </div>
 
         </div>
 
-        <!-- Footer Info -->
-        <div class="bg-slate-50 border-t border-slate-200 p-3 text-center text-xs text-slate-400">
-            Absensi App • Versi MVP 1.0
+        <!-- Footer -->
+        <div class="bg-slate-50 border-t border-slate-200 p-2.5 text-center text-xs text-slate-400 shrink-0">
+            Absensi Retail App • Multi-Store v2.0
         </div>
 
     </div>
 
-    <!-- JavaScript Interaksi & API ke Spreadsheet -->
+    <!-- Script Aplikasi -->
     <script>
-        // Jam Real-time
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzef8vkkjC81UCA2wLJWBohKbjjWK_Wlt8PI-1cvZAr2fS-nIHCexS2objVyTLipW_g/exec';
+
+        let masterStores = [];
+        let masterKaryawan = [];
+
+        // Jam & Tanggal Real-time
         setInterval(() => {
             const now = new Date();
             document.getElementById('live-clock').innerText = now.toLocaleTimeString('id-ID');
             document.getElementById('current-date').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         }, 1000);
 
-        // Ambil Koordinat GPS Otomatis saat halaman dibuka
-        window.onload = function() {
+        // Inisialisasi saat Halaman Dimuat
+        window.onload = async function() {
+            initGPS();
+            await fetchMasterData();
+        };
+
+        function initGPS() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude.toFixed(5);
-                        const lon = position.coords.longitude.toFixed(5);
+                    (pos) => {
+                        const lat = pos.coords.latitude.toFixed(5);
+                        const lon = pos.coords.longitude.toFixed(5);
                         document.getElementById('gps-status').innerText = `${lat}, ${lon}`;
                         document.getElementById('gps-status').className = "text-emerald-600 font-semibold text-xs";
                     },
-                    (error) => {
-                        document.getElementById('gps-status').innerText = "GPS Gagal / Ditolak";
+                    (err) => {
+                        document.getElementById('gps-status').innerText = "GPS Ditolak / Off";
                         document.getElementById('gps-status').className = "text-rose-600 font-semibold text-xs";
-                    }
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
             } else {
-                document.getElementById('gps-status').innerText = "Tidak Didukung Browser";
+                document.getElementById('gps-status').innerText = "GPS Tidak Didukung";
+                document.getElementById('gps-status').className = "text-rose-600 font-semibold text-xs";
             }
-        };
-
-        // Preview Foto
-        function previewImage(event) {
-            const reader = new FileReader();
-            reader.onload = function(){
-                const output = document.getElementById('image-preview');
-                output.src = reader.result;
-                output.classList.remove('hidden');
-                document.getElementById('camera-placeholder').classList.add('hidden');
-            };
-            reader.readAsDataURL(event.target.files[0]);
         }
 
-        // Fungsi Kirim Absen ke Google Spreadsheet
-        async function submitAttendance(type) {
-            const name = document.getElementById('employee-name').value.trim();
-            const gps = document.getElementById('gps-status').innerText;
+        async function fetchMasterData() {
+            const selectStore = document.getElementById('select-store');
+            try {
+                const res = await fetch(SCRIPT_URL);
+                const data = await res.json();
+                
+                if (data.status === "success") {
+                    masterStores = data.stores || [];
+                    masterKaryawan = data.karyawan || [];
+                    populateStoreDropdown();
+                } else {
+                    selectStore.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
+                    alert("Gagal memuat data master dari server.");
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                selectStore.innerHTML = '<option value="">-- Error Koneksi Server --</option>';
+            }
+        }
+
+        function populateStoreDropdown() {
+            const selectStore = document.getElementById('select-store');
+            selectStore.innerHTML = '<option value="">-- Pilih Store --</option>';
             
-            // Validasi Nama
-            if (!name) {
-                alert("Harap masukkan Nama Lengkap Anda terlebih dahulu!");
-                document.getElementById('employee-name').focus();
+            masterStores.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.nama;
+                selectStore.appendChild(opt);
+            });
+        }
+
+        function onStoreChange() {
+            const storeId = document.getElementById('select-store').value;
+            const selectEmp = document.getElementById('select-employee');
+            
+            selectEmp.innerHTML = '';
+            
+            if (!storeId) {
+                selectEmp.disabled = true;
+                selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition";
+                selectEmp.innerHTML = '<option value="">-- Pilih Store Terlebih Dahulu --</option>';
                 return;
             }
 
-            // Validasi GPS
-            if (gps.includes("Gagal") || gps.includes("Mendeteksi")) {
-                alert("Harap tunggu lokasi GPS terdeteksi atau aktifkan izin lokasi di browser Anda!");
+            const filteredEmp = masterKaryawan.filter(k => k.storeId === storeId);
+            
+            selectEmp.disabled = false;
+            selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
+            selectEmp.innerHTML = '<option value="">-- Pilih Nama Sales --</option>';
+
+            if (filteredEmp.length === 0) {
+                selectEmp.innerHTML = '<option value="">-- Tidak Ada Sales di Store Ini --</option>';
+                return;
+            }
+
+            filteredEmp.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k.nama;
+                opt.textContent = `${k.nama} (${k.jabatan})`;
+                selectEmp.appendChild(opt);
+            });
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const output = document.getElementById('image-preview');
+                    output.src = reader.result;
+                    output.classList.remove('hidden');
+                    document.getElementById('camera-placeholder').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function submitAttendance(type) {
+            const storeSelect = document.getElementById('select-store');
+            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
+            const karyawanNama = document.getElementById('select-employee').value;
+            const gps = document.getElementById('gps-status').innerText;
+
+            if (!storeSelect.value) {
+                alert("Harap pilih Store lokasi kerja Anda!");
+                return;
+            }
+            if (!karyawanNama) {
+                alert("Harap pilih Nama Sales Anda!");
+                return;
+            }
+            if (gps.includes("Ditolak") || gps.includes("Mendeteksi") || gps.includes("Tidak Didukung")) {
+                alert("Harap tunggu lokasi GPS terdeteksi atau aktifkan akses lokasi di browser!");
                 return;
             }
 
             const payload = {
-                nama: name,
+                storeNama: storeNama,
+                karyawanNama: karyawanNama,
                 status: type,
                 gps: gps,
                 foto: true
             };
 
-            // ========================================================
-            // GANTI URL DI BAWAH INI DENGAN URL WEB APP (/exec) ANDA
-            // ========================================================
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbwhbrCCFCDifJ-9j4ROdB76JzdK_HUrPmV9y2VtPQDLfdADlqrS_khNPv54W6EtDNewgw/exec';
-
-            if (scriptURL.includes('MASUKKAN_URL')) {
-                alert("URL Google Apps Script belum dipasang di dalam kode!");
-                return;
-            }
+            const btnIn = document.getElementById('btn-clock-in');
+            const btnOut = document.getElementById('btn-clock-out');
+            
+            btnIn.disabled = true;
+            btnOut.disabled = true;
 
             try {
-                alert("Mengirim data absensi ke server...");
-                
-                await fetch(scriptURL, {
+                await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Wajib agar tidak terkena blokir CORS Google
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                alert(`Berhasil ${type} untuk ${name}!\nData telah tercatat otomatis di Google Spreadsheet.`);
-                document.getElementById('attendance-status').innerText = type === 'Clock In' ? 'Sudah Clock In' : 'Sudah Selesai Kerja';
-                document.getElementById('attendance-status').className = "px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
+                alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}`);
+                document.getElementById('attendance-status').innerText = type === 'Clock In' ? 'Sudah Clock In' : 'Sudah Clock Out';
+                document.getElementById('attendance-status').className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
 
-            } catch (error) {
-                console.error('Error!', error.message);
-                alert("Gagal terhubung ke server database.");
+            } catch (err) {
+                console.error("Submit Error:", err);
+                alert("Gagal mengirim absensi ke server.");
+            } finally {
+                btnIn.disabled = false;
+                btnOut.disabled = false;
             }
         }
     </script>

@@ -5,21 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Portal Absensi Store</title>
     
-    <!-- PWA & Mobile Native Meta -->
     <meta name="theme-color" content="#4f46e5">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Absensi Store">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/712/712013.png">
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Inter', sans-serif; } </style>
 </head>
 <body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none relative">
 
-    <!-- Container Utama Aplikasi -->
     <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[94vh] max-h-[900px]">
         
         <!-- Header -->
@@ -28,28 +25,25 @@
                 <h1 class="text-base sm:text-lg font-bold tracking-tight">Portal Absensi Store</h1>
                 <p class="text-[11px] text-indigo-200" id="current-date">Memuat tanggal...</p>
             </div>
-            <!-- Tombol Rahasia Portal HR Admin -->
             <button onclick="openHRPortalModal()" class="bg-indigo-500/90 hover:bg-indigo-400 active:scale-95 px-3 py-1 rounded-full text-[11px] font-semibold border border-indigo-300 flex items-center gap-1 cursor-pointer transition">
                 <span>🔑 Portal HR</span>
             </button>
         </div>
 
-        <!-- Offline Queue Banner (Indikator Sinyal) -->
+        <!-- Offline Banner -->
         <div id="offline-banner" class="hidden bg-amber-500 text-white px-3 py-1.5 text-[11px] font-bold text-center flex justify-between items-center shrink-0">
             <span id="offline-banner-text">🟠 Mode Offline: Data tersimpan di HP</span>
             <button onclick="syncOfflineQueue()" class="underline text-[10px] bg-amber-600 px-2 py-0.5 rounded cursor-pointer">Sync Sekarang</button>
         </div>
 
-        <!-- Konten Utama (Absensi Sales) -->
+        <!-- Main Content -->
         <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-3.5">
             
-            <!-- Live Clock Widget -->
             <div class="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-3 text-center shadow-sm">
                 <p class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Waktu Real-time</p>
                 <h2 class="text-3xl font-extrabold text-indigo-900 mt-0.5 tracking-tight" id="live-clock">00:00:00</h2>
             </div>
 
-            <!-- Dropdown 1: Store -->
             <div class="space-y-1">
                 <label for="select-store" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Cabang / Store</label>
                 <select id="select-store" onchange="onStoreChange()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-medium text-slate-800 transition">
@@ -57,7 +51,6 @@
                 </select>
             </div>
 
-            <!-- Dropdown 2: Karyawan -->
             <div class="space-y-1">
                 <label for="select-employee" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Nama Sales / Karyawan</label>
                 <select id="select-employee" disabled onchange="checkUserAttendanceState()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition">
@@ -65,7 +58,6 @@
                 </select>
             </div>
 
-            <!-- Status & GPS Panel -->
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm space-y-1.5">
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-500 font-medium">Status Absen Hari Ini:</span>
@@ -77,7 +69,6 @@
                 </div>
             </div>
 
-            <!-- Mandatory Foto Selfie -->
             <div class="space-y-1">
                 <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
                     <span>Foto Selfie Presensi Harian</span>
@@ -96,7 +87,6 @@
                 </div>
             </div>
 
-            <!-- Tombol Absensi Normal -->
             <div class="grid grid-cols-2 gap-2.5 pt-1">
                 <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
                     <span>Clock In</span>
@@ -106,31 +96,26 @@
                 </button>
             </div>
 
-            <!-- Separator -->
             <div class="relative flex py-1 items-center">
                 <div class="flex-grow border-t border-slate-200"></div>
                 <span class="flex-shrink mx-2 text-[10px] text-slate-400 font-semibold uppercase">Atau Kendala Tidak Masuk</span>
                 <div class="flex-grow border-t border-slate-200"></div>
             </div>
 
-            <!-- Tombol Modal Form Pengajuan -->
             <button onclick="openModalPengajuan()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs flex items-center justify-center gap-2 cursor-pointer">
                 <span>Form Pengajuan (Sakit / Izin / Cuti)</span>
             </button>
 
         </div>
 
-        <!-- Footer -->
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v3.0 Offline-First + HR Portal
+            Absensi Retail App • Multi-Store v3.1 HR Approval System
         </div>
 
     </div>
 
 
-    <!-- ========================================================================= -->
-    <!-- MODAL 1: FORM PENGAJUKAN SAKIT/IZIN/CUTI -->
-    <!-- ========================================================================= -->
+    <!-- MODAL PENGAJUKAN SAKIT/IZIN/CUTI -->
     <div id="modal-pengajuan" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
             <div class="bg-amber-500 text-white p-4 flex justify-between items-center shrink-0">
@@ -180,13 +165,10 @@
     </div>
 
 
-    <!-- ========================================================================= -->
-    <!-- MODAL 2: PORTAL ADMIN & MONITORING APPROVAL HR -->
-    <!-- ========================================================================= -->
+    <!-- MODAL PORTAL ADMIN HR -->
     <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col h-[88vh] max-h-[800px] animate-in fade-in zoom-in duration-200">
             
-            <!-- Header Modal HR -->
             <div class="bg-indigo-700 text-white p-4 flex justify-between items-center shrink-0">
                 <div>
                     <h3 class="font-bold text-sm">Dashboard Monitoring HR</h3>
@@ -195,7 +177,7 @@
                 <button onclick="closeHRPortalModal()" class="text-white hover:bg-indigo-800 rounded-full p-1 cursor-pointer">✕</button>
             </div>
 
-            <!-- PIN Security Screen (Jika Belum Login PIN) -->
+            <!-- PIN Screen -->
             <div id="hr-pin-screen" class="p-6 flex flex-col justify-center items-center flex-1 space-y-4">
                 <div class="text-center space-y-1">
                     <h4 class="font-bold text-slate-800 text-sm">Akses Terkunci Admin HR</h4>
@@ -205,10 +187,9 @@
                 <button onclick="verifyHRPin()" class="w-36 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-xs shadow-md">Buka Portal</button>
             </div>
 
-            <!-- Dashboard Content Screen (Setelah PIN Valid) -->
+            <!-- Dashboard Content Screen -->
             <div id="hr-dashboard-screen" class="hidden flex-1 overflow-y-auto p-4 space-y-4">
                 
-                <!-- Live Summary Counter Hari Ini -->
                 <div class="grid grid-cols-3 gap-2">
                     <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
                         <p class="text-[9px] font-bold text-emerald-600 uppercase">Hadir (In)</p>
@@ -224,7 +205,6 @@
                     </div>
                 </div>
 
-                <!-- Daftar Transaksi & Pengajuan Hari Ini -->
                 <div class="space-y-2">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between items-center">
                         <span>Aktivitas & Approval (Hari Ini)</span>
@@ -241,12 +221,9 @@
     </div>
 
 
-    <!-- ========================================================================= -->
-    <!-- SCRIPT APLIKASI (OFFLINE-FIRST + HR PORTAL) -->
-    <!-- ========================================================================= -->
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysnYJNbtypJLXnG9OzVJF7Q9X1uMl9kjqzR_ukg-Jnq4GKGNHnbOAQbqrPd3FEvfu0/exec';
-        const HR_PIN = "1234"; // PIN Akses HR Admin
+        const HR_PIN = "1234";
 
         let masterStores = [];
         let masterKaryawan = [];
@@ -254,7 +231,6 @@
         let modalCompressedBase64Photo = "";
         let db;
 
-        // Inisialisasi IndexedDB Offline-First Queue
         const request = indexedDB.open("AbsensiOfflineDB", 1);
         request.onupgradeneeded = function(e) {
             db = e.target.result;
@@ -331,7 +307,7 @@
                     populateStoreDropdown();
                 }
             } catch (err) {
-                selectStore.innerHTML = '<option value="">-- Mode Offline / Sinyal Lemah --</option>';
+                selectStore.innerHTML = '<option value="">-- Mode Offline --</option>';
             }
         }
 
@@ -395,7 +371,7 @@
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
                 btnIn.disabled = true; btnOut.disabled = true;
             } else if (lastState && lastState.includes('Pengajuan')) {
-                statusBadge.innerText = `Pengajuan (${lastState.replace('Pengajuan: ', '')})`;
+                statusBadge.innerText = `${lastState}`;
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
                 btnIn.disabled = true; btnOut.disabled = true;
             } else {
@@ -458,7 +434,6 @@
             };
         }
 
-        // SIMPAN PENGERJAAN OFFLINE KE INDEXEDDB
         function saveToOfflineQueue(payload) {
             if (!db) return;
             const tx = db.transaction("offline_queue", "readwrite");
@@ -470,7 +445,6 @@
             };
         }
 
-        // SINKRONISASI OTOMATIS ANTREAN OFFLINE
         function syncOfflineQueue() {
             if (!db || !navigator.onLine) return;
             const tx = db.transaction("offline_queue", "readwrite");
@@ -524,9 +498,10 @@
             const karyawanNama = document.getElementById('select-employee').value;
             const gps = document.getElementById('gps-status').innerText;
 
-            if (!storeSelect.value) { alert("Harap pilih Store lokasi kerja Anda!"); return; }
-            if (!karyawanNama) { alert("Harap pilih Nama Sales Anda!"); return; }
-            if (!compressedBase64Photo) { alert("FOTO WAJIB DIAMBIL!"); return; }
+            if (!storeSelect.value || !karyawanNama || !compressedBase64Photo) {
+                alert("Harap lengkapi Store, Nama Sales, dan Foto Selfie!");
+                return;
+            }
 
             const payload = {
                 timestamp: new Date().toISOString(),
@@ -631,14 +606,9 @@
             }
         }
 
-        // KONTROL PORTAL ADMIN HR
-        function openHRPortalModal() {
-            document.getElementById('modal-hr-portal').classList.remove('hidden');
-        }
-
-        function closeModalHRPortalModal() {
-            document.getElementById('modal-hr-portal').classList.add('hidden');
-        }
+        // HR PORTAL LOGIC
+        function openHRPortalModal() { document.getElementById('modal-hr-portal').classList.remove('hidden'); }
+        function closeHRPortalModal() { document.getElementById('modal-hr-portal').classList.add('hidden'); }
 
         function verifyHRPin() {
             const inputPin = document.getElementById('hr-pin-input').value;
@@ -662,7 +632,6 @@
                 if (data.status === "success") {
                     const logs = data.logs || [];
                     
-                    // Count Stats
                     let countIn = 0, countOut = 0, countLeave = 0;
                     logs.forEach(l => {
                         if (l.status === 'Clock In') countIn++;
@@ -682,11 +651,14 @@
                     container.innerHTML = '';
                     logs.reverse().forEach(log => {
                         const isLeave = log.status.includes('Pengajuan');
+                        const isApproved = log.status.includes('ACC');
+                        const isRejected = log.status.includes('REJECT');
+
                         const itemHtml = `
                             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
                                 <div class="flex justify-between font-bold text-slate-800">
                                     <span>${log.karyawan}</span>
-                                    <span class="${isLeave ? 'text-amber-600' : 'text-indigo-600'}">${log.status}</span>
+                                    <span class="${isLeave ? (isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')) : 'text-indigo-600'}">${log.status}</span>
                                 </div>
                                 <div class="text-slate-500 text-[11px] space-y-0.5">
                                     <p>🏬 Store: ${log.store}</p>
@@ -696,10 +668,16 @@
                                 </div>
                                 ${isLeave ? `
                                     <div class="pt-1 flex justify-between items-center border-t border-slate-200">
-                                        <span class="text-[10px] font-bold text-slate-500">Status: ${log.approvalStatus}</span>
+                                        <span class="text-[10px] font-bold ${isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')}">
+                                            Status: ${log.approvalStatus}
+                                        </span>
                                         <div class="flex gap-1">
-                                            <button onclick="updateHRApproval(${log.rowId}, 'Approved')" class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">Approve ✅</button>
-                                            <button onclick="updateHRApproval(${log.rowId}, 'Rejected')" class="bg-rose-600 text-white px-2 py-1 rounded text-[10px] font-bold">Reject ❌</button>
+                                            <button onclick="updateHRApproval(${log.rowId}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
+                                                ACC (Approve) ✅
+                                            </button>
+                                            <button onclick="updateHRApproval(${log.rowId}, 'Rejected')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
+                                                REJECT ❌
+                                            </button>
                                         </div>
                                     </div>
                                 ` : ''}
@@ -721,7 +699,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: "update_approval", rowId: rowId, approvalStatus: statusVal })
                 });
-                alert(`Berhasil memperbarui pengajuan menjadi: ${statusVal}`);
+                alert(`Berhasil memperbarui pengajuan menjadi: ${statusVal === 'Approved' ? 'DI ACC ✅' : 'DI REJECT ❌'}`);
                 fetchAdminHRData();
             } catch (err) {
                 alert("Gagal memperbarui status approval.");

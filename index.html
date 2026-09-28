@@ -19,7 +19,7 @@
 </head>
 <body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none">
 
-    <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[92vh] max-h-[880px]">
+    <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[94vh] max-h-[900px]">
         
         <!-- Header -->
         <div class="bg-indigo-600 text-white p-4 sm:p-5 flex justify-between items-center shrink-0 shadow-md">
@@ -57,12 +57,21 @@
                 </select>
             </div>
 
-            <!-- Dropdown 3: Jam Shift Kerja (DISEMBUNYIKAN SEMENTARA) -->
+            <!-- Dropdown 3: Jam Shift Kerja (Disebunyikan Sementara) -->
             <div id="container-shift" class="space-y-1 hidden">
                 <label for="select-shift" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jam Shift Kerja</label>
                 <select id="select-shift" disabled class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition">
                     <option value="">-- Pilih Store Terlebih Dahulu --</option>
                 </select>
+            </div>
+
+            <!-- Field Input Catatan / Keterangan -->
+            <div class="space-y-1">
+                <label for="input-catatan" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
+                    <span>Catatan / Keterangan</span>
+                    <span class="text-slate-400 font-normal text-[10px]">(Wajib untuk Izin/Sakit)</span>
+                </label>
+                <input type="text" id="input-catatan" placeholder="Contoh: Sakit demam / Cuti / Tugas luar store..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-slate-800 transition">
             </div>
 
             <!-- Status & GPS Panel -->
@@ -77,32 +86,39 @@
                 </div>
             </div>
 
-            <!-- Mandatory Foto Selfie -->
+            <!-- Mandatory Foto Selfie / Bukti Surat -->
             <div class="space-y-1">
                 <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
-                    <span>Verifikasi Foto Selfie</span>
+                    <span>Foto Selfie / Bukti Surat</span>
                     <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB FOTO</span>
                 </label>
-                <div class="border-2 border-dashed border-slate-300 rounded-xl p-2.5 text-center bg-slate-50 relative hover:bg-slate-100 transition">
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-2 text-center bg-slate-50 relative hover:bg-slate-100 transition">
                     <input type="file" accept="image/*" capture="user" id="camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewAndCompressImage(event)">
-                    <div id="camera-placeholder" class="space-y-1">
+                    <div id="camera-placeholder" class="space-y-1 py-1">
                         <svg class="w-6 h-6 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <p class="text-xs text-slate-500 font-medium">Tap untuk Ambil Foto Selfie</p>
+                        <p class="text-xs text-slate-500 font-medium">Tap untuk Ambil Foto Selfie / Bukti SKD</p>
                     </div>
-                    <img id="image-preview" class="hidden w-full h-28 object-cover rounded-lg mx-auto" alt="Preview Foto Selfie">
+                    <img id="image-preview" class="hidden w-full h-24 object-cover rounded-lg mx-auto" alt="Preview Foto">
                 </div>
             </div>
 
-            <!-- Tombol Clock In / Out -->
-            <div class="grid grid-cols-2 gap-3 pt-0.5">
-                <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                    <span>Clock In</span>
-                </button>
-                <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                    <span>Clock Out</span>
+            <!-- Tombol Aksi (Clock In / Clock Out / Pengajuan) -->
+            <div class="space-y-2 pt-0.5">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span>Clock In</span>
+                    </button>
+                    <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                        <span>Clock Out</span>
+                    </button>
+                </div>
+                
+                <!-- Tombol Pengajuan Sakit/Izin/Cuti -->
+                <button id="btn-pengajuan" onclick="submitAttendance('Pengajuan (Sakit/Izin/Cuti)')" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2 px-3 rounded-xl shadow transition text-xs flex items-center justify-center gap-1.5 cursor-pointer">
+                    <span>Kirim Pengajuan (Sakit / Izin / Cuti)</span>
                 </button>
             </div>
 
@@ -110,7 +126,7 @@
 
         <!-- Footer -->
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v2.5 PWA
+            Absensi Retail App • Multi-Store v2.6 PWA
         </div>
 
     </div>
@@ -236,7 +252,7 @@
                 selectEmp.appendChild(opt);
             });
 
-            // Filter Shift (Background processing)
+            // Filter Shift (Background)
             const isBatavia = storeNama.toLowerCase().includes("batavia");
             const targetType = isBatavia ? "batavia" : "mall";
             const filteredShifts = masterShifts.filter(s => s.tipe.toLowerCase() === targetType);
@@ -276,6 +292,11 @@
             } else if (lastState === 'Clock Out') {
                 statusBadge.innerText = 'Sudah Clock Out (Selesai)';
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
+                btnIn.disabled = true;
+                btnOut.disabled = true;
+            } else if (lastState === 'Pengajuan') {
+                statusBadge.innerText = 'Pengajuan Terkirim';
+                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
                 btnIn.disabled = true;
                 btnOut.disabled = true;
             } else {
@@ -326,6 +347,7 @@
             const karyawanNama = document.getElementById('select-employee').value;
             const shiftSelect = document.getElementById('select-shift');
             const shiftNama = (shiftSelect && shiftSelect.value) ? shiftSelect.value : '-';
+            const catatanInput = document.getElementById('input-catatan').value.trim();
             const gps = document.getElementById('gps-status').innerText;
 
             if (!storeSelect.value) {
@@ -336,8 +358,12 @@
                 alert("Harap pilih Nama Sales Anda!");
                 return;
             }
+            if (type.includes('Pengajuan') && !catatanInput) {
+                alert("HARAP ISI CATATAN! Jelaskan alasan Izin, Sakit, atau Cuti Anda pada kolom Catatan.");
+                return;
+            }
             if (!compressedBase64Photo) {
-                alert("FOTO WAJIB DIAMBIL! Harap ambil foto selfie terlebih dahulu sebelum absen.");
+                alert("FOTO WAJIB DIAMBIL! Harap ambil foto selfie / foto surat dokter terlebih dahulu.");
                 return;
             }
             if (gps.includes("Ditolak") || gps.includes("Mendeteksi") || gps.includes("Tidak Didukung")) {
@@ -350,14 +376,17 @@
                 karyawanNama: karyawanNama,
                 shiftNama: shiftNama,
                 status: type,
+                catatan: catatanInput || "-",
                 gps: gps,
                 fotoBase64: compressedBase64Photo
             };
 
             const btnIn = document.getElementById('btn-clock-in');
             const btnOut = document.getElementById('btn-clock-out');
+            const btnPengajuan = document.getElementById('btn-pengajuan');
             btnIn.disabled = true;
             btnOut.disabled = true;
+            btnPengajuan.disabled = true;
 
             try {
                 alert(`Mengirim data ${type}... Mohon tunggu.`);
@@ -370,15 +399,17 @@
                 });
 
                 const todayKey = new Date().toISOString().split('T')[0];
-                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, type);
+                const stateSaved = type.includes('Pengajuan') ? 'Pengajuan' : type;
+                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, stateSaved);
 
-                alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}`);
+                alert(`Berhasil Mengirim ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}\nCatatan: ${catatanInput || '-'}`);
                 checkUserAttendanceState();
 
             } catch (err) {
-                alert("Gagal mengirim absensi ke server.");
+                alert("Gagal mengirim data ke server.");
                 btnIn.disabled = false;
                 btnOut.disabled = false;
+                btnPengajuan.disabled = false;
             }
         }
     </script>

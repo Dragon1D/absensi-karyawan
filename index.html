@@ -17,8 +17,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Inter', sans-serif; } </style>
 </head>
-<body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none">
+<body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none relative">
 
+    <!-- Container Utama Aplikasi Absensi Harian -->
     <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[94vh] max-h-[900px]">
         
         <!-- Header -->
@@ -57,23 +58,6 @@
                 </select>
             </div>
 
-            <!-- Dropdown 3: Jam Shift Kerja (Disebunyikan Sementara) -->
-            <div id="container-shift" class="space-y-1 hidden">
-                <label for="select-shift" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jam Shift Kerja</label>
-                <select id="select-shift" disabled class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition">
-                    <option value="">-- Pilih Store Terlebih Dahulu --</option>
-                </select>
-            </div>
-
-            <!-- Field Input Catatan / Keterangan -->
-            <div class="space-y-1">
-                <label for="input-catatan" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
-                    <span>Catatan / Keterangan</span>
-                    <span class="text-slate-400 font-normal text-[10px]">(Wajib untuk Izin/Sakit)</span>
-                </label>
-                <input type="text" id="input-catatan" placeholder="Contoh: Sakit demam / Cuti / Tugas luar store..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-slate-800 transition">
-            </div>
-
             <!-- Status & GPS Panel -->
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm space-y-1.5">
                 <div class="flex justify-between items-center text-xs">
@@ -86,58 +70,152 @@
                 </div>
             </div>
 
-            <!-- Mandatory Foto Selfie / Bukti Surat -->
+            <!-- Mandatory Foto Selfie Absensi Normal -->
             <div class="space-y-1">
                 <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
-                    <span>Foto Selfie / Bukti Surat</span>
+                    <span>Foto Selfie Presensi Harian</span>
                     <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB FOTO</span>
                 </label>
-                <div class="border-2 border-dashed border-slate-300 rounded-xl p-2 text-center bg-slate-50 relative hover:bg-slate-100 transition">
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-2.5 text-center bg-slate-50 relative hover:bg-slate-100 transition">
                     <input type="file" accept="image/*" capture="user" id="camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewAndCompressImage(event)">
                     <div id="camera-placeholder" class="space-y-1 py-1">
                         <svg class="w-6 h-6 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <p class="text-xs text-slate-500 font-medium">Tap untuk Ambil Foto Selfie / Bukti SKD</p>
+                        <p class="text-xs text-slate-500 font-medium">Tap untuk Ambil Foto Selfie</p>
                     </div>
-                    <img id="image-preview" class="hidden w-full h-24 object-cover rounded-lg mx-auto" alt="Preview Foto">
+                    <img id="image-preview" class="hidden w-full h-28 object-cover rounded-lg mx-auto" alt="Preview Foto">
                 </div>
             </div>
 
-            <!-- Tombol Aksi (Clock In / Clock Out / Pengajuan) -->
-            <div class="space-y-2 pt-0.5">
-                <div class="grid grid-cols-2 gap-2.5">
-                    <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                        <span>Clock In</span>
-                    </button>
-                    <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                        <span>Clock Out</span>
-                    </button>
-                </div>
-                
-                <!-- Tombol Pengajuan Sakit/Izin/Cuti -->
-                <button id="btn-pengajuan" onclick="submitAttendance('Pengajuan (Sakit/Izin/Cuti)')" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2 px-3 rounded-xl shadow transition text-xs flex items-center justify-center gap-1.5 cursor-pointer">
-                    <span>Kirim Pengajuan (Sakit / Izin / Cuti)</span>
+            <!-- Tombol Absensi Normal -->
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+                <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                    <span>Clock In</span>
+                </button>
+                <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                    <span>Clock Out</span>
                 </button>
             </div>
+
+            <!-- Separator -->
+            <div class="relative flex py-1 items-center">
+                <div class="flex-grow border-t border-slate-200"></div>
+                <span class="flex-shrink mx-2 text-[10px] text-slate-400 font-semibold uppercase">Atau Kendala Tidak Masuk</span>
+                <div class="flex-grow border-t border-slate-200"></div>
+            </div>
+
+            <!-- Tombol Buka Modal Pengajuan -->
+            <button onclick="openModalPengajuan()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs flex items-center justify-center gap-2 cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span>Form Pengajuan (Sakit / Izin / Cuti)</span>
+            </button>
 
         </div>
 
         <!-- Footer -->
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v2.6 PWA
+            Absensi Retail App • Multi-Store v2.7 PWA
         </div>
 
     </div>
 
+
+    <!-- ========================================================================= -->
+    <!-- MODAL POP-UP FORM PENGAJUKAN (SAKIT / IZIN / CUTI) -->
+    <!-- ========================================================================= -->
+    <div id="modal-pengajuan" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            
+            <!-- Modal Header -->
+            <div class="bg-amber-500 text-white p-4 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    <h3 class="font-bold text-sm">Form Pengajuan Ketidakhadiran</h3>
+                </div>
+                <button onclick="closeModalPengajuan()" class="text-white hover:bg-amber-600 rounded-full p-1 cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-4 space-y-3.5 overflow-y-auto flex-1">
+                
+                <!-- Info Sales Ringkas -->
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-900">
+                    <p class="font-semibold" id="modal-info-sales">Sales: -</p>
+                    <p class="text-[11px] text-amber-700" id="modal-info-store">Store: -</p>
+                </div>
+
+                <!-- Input 1: Jenis Pengajuan -->
+                <div class="space-y-1">
+                    <label for="modal-select-tipe" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jenis Pengajuan</label>
+                    <select id="modal-select-tipe" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500 bg-slate-50 text-slate-800">
+                        <option value="Sakit">Sakit (Wajib Lampirkan SKD)</option>
+                        <option value="Izin">Izin Keperluan Penting</option>
+                        <option value="Cuti">Cuti Tahunan</option>
+                        <option value="Tugas Luar">Tugas Luar Store</option>
+                    </select>
+                </div>
+
+                <!-- Input 2: Alasan / Catatan Detail -->
+                <div class="space-y-1">
+                    <label for="modal-input-alasan" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
+                        <span>Detail Alasan / Catatan</span>
+                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB ISI</span>
+                    </label>
+                    <textarea id="modal-input-alasan" rows="3" placeholder="Jelaskan alasan pengajuan secara detail (contoh: Demam tinggi sejak pagi, istirahat dokter 2 hari)..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 bg-slate-50 text-slate-800"></textarea>
+                </div>
+
+                <!-- Input 3: Foto Surat Dokter / Bukti Pengajuan -->
+                <div class="space-y-1">
+                    <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
+                        <span>Foto Surat Dokter / Bukti</span>
+                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB BUKTI</span>
+                    </label>
+                    <div class="border-2 border-dashed border-amber-300 rounded-xl p-2.5 text-center bg-amber-50/50 relative hover:bg-amber-100/50 transition">
+                        <input type="file" accept="image/*" capture="user" id="modal-camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewAndCompressModalImage(event)">
+                        <div id="modal-camera-placeholder" class="space-y-1 py-1">
+                            <svg class="w-6 h-6 mx-auto text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            </svg>
+                            <p class="text-xs text-amber-800 font-medium">Tap untuk Ambil Foto Surat Dokter / Bukti</p>
+                        </div>
+                        <img id="modal-image-preview" class="hidden w-full h-28 object-cover rounded-lg mx-auto" alt="Preview Bukti">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer (Tombol Kirim) -->
+            <div class="p-3 bg-slate-50 border-t border-slate-200 flex gap-2 shrink-0">
+                <button onclick="closeModalPengajuan()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+                    Batal
+                </button>
+                <button id="btn-submit-modal" onclick="submitModalPengajuan()" class="w-2/3 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition cursor-pointer">
+                    Kirim Pengajuan
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ========================================================================= -->
+    <!-- SCRIPT APLIKASI -->
+    <!-- ========================================================================= -->
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysnYJNbtypJLXnG9OzVJF7Q9X1uMl9kjqzR_ukg-Jnq4GKGNHnbOAQbqrPd3FEvfu0/exec';
 
         let masterStores = [];
         let masterKaryawan = [];
-        let masterShifts = [];
         let compressedBase64Photo = "";
+        let modalCompressedBase64Photo = "";
 
         setInterval(() => {
             const now = new Date();
@@ -197,7 +275,6 @@
                 if (data.status === "success") {
                     masterStores = data.stores || [];
                     masterKaryawan = data.karyawan || [];
-                    masterShifts = data.shifts || [];
                     populateStoreDropdown();
                 } else {
                     selectStore.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
@@ -221,25 +298,17 @@
         function onStoreChange() {
             const storeSelect = document.getElementById('select-store');
             const storeId = storeSelect.value;
-            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
             
             const selectEmp = document.getElementById('select-employee');
-            const selectShift = document.getElementById('select-shift');
-            
             selectEmp.innerHTML = '';
-            selectShift.innerHTML = '';
             
             if (!storeId) {
                 selectEmp.disabled = true;
-                selectShift.disabled = true;
                 selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition";
-                selectShift.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition";
                 selectEmp.innerHTML = '<option value="">-- Pilih Store Terlebih Dahulu --</option>';
-                selectShift.innerHTML = '<option value="">-- Pilih Store Terlebih Dahulu --</option>';
                 return;
             }
 
-            // Filter Karyawan
             const filteredEmp = masterKaryawan.filter(k => k.storeId === storeId);
             selectEmp.disabled = false;
             selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
@@ -250,20 +319,6 @@
                 opt.value = k.nama;
                 opt.textContent = `${k.nama} (${k.jabatan})`;
                 selectEmp.appendChild(opt);
-            });
-
-            // Filter Shift (Background)
-            const isBatavia = storeNama.toLowerCase().includes("batavia");
-            const targetType = isBatavia ? "batavia" : "mall";
-            const filteredShifts = masterShifts.filter(s => s.tipe.toLowerCase() === targetType);
-            
-            selectShift.disabled = false;
-            selectShift.innerHTML = '<option value="">-- Pilih Jam Shift --</option>';
-            filteredShifts.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.nama;
-                opt.textContent = s.nama;
-                selectShift.appendChild(opt);
             });
 
             resetAttendanceStateUI();
@@ -294,8 +349,8 @@
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
                 btnIn.disabled = true;
                 btnOut.disabled = true;
-            } else if (lastState === 'Pengajuan') {
-                statusBadge.innerText = 'Pengajuan Terkirim';
+            } else if (lastState && lastState.includes('Pengajuan')) {
+                statusBadge.innerText = `Pengajuan (${lastState.replace('Pengajuan: ', '')})`;
                 statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
                 btnIn.disabled = true;
                 btnOut.disabled = true;
@@ -311,6 +366,7 @@
             document.getElementById('btn-clock-out').disabled = false;
         }
 
+        // Preview & Kompresi Foto Layar Utama
         function previewAndCompressImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -341,13 +397,124 @@
             };
         }
 
+        // Preview & Kompresi Foto Modal Form
+        function previewAndCompressModalImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600;
+                    const scale = MAX_WIDTH / img.width;
+
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scale;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    modalCompressedBase64Photo = canvas.toDataURL('image/jpeg', 0.6);
+
+                    const output = document.getElementById('modal-image-preview');
+                    output.src = modalCompressedBase64Photo;
+                    output.classList.remove('hidden');
+                    document.getElementById('modal-camera-placeholder').classList.add('hidden');
+                };
+            };
+        }
+
+        // LOGIKA KONTROL MODAL FORM PENGAJUKAN
+        function openModalPengajuan() {
+            const storeSelect = document.getElementById('select-store');
+            const karyawanNama = document.getElementById('select-employee').value;
+            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
+
+            if (!storeSelect.value) {
+                alert("Harap pilih Store lokasi kerja Anda terlebih dahulu!");
+                return;
+            }
+            if (!karyawanNama) {
+                alert("Harap pilih Nama Sales Anda terlebih dahulu!");
+                return;
+            }
+
+            document.getElementById('modal-info-sales').innerText = `Sales: ${karyawanNama}`;
+            document.getElementById('modal-info-store').innerText = `Store: ${storeNama}`;
+            document.getElementById('modal-pengajuan').classList.remove('hidden');
+        }
+
+        function closeModalPengajuan() {
+            document.getElementById('modal-pengajuan').classList.add('hidden');
+        }
+
+        // SUBMIT PENGAJUKAN DARI MODAL POP-UP
+        async function submitModalPengajuan() {
+            const storeSelect = document.getElementById('select-store');
+            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
+            const karyawanNama = document.getElementById('select-employee').value;
+            const tipePengajuan = document.getElementById('modal-select-tipe').value;
+            const alasanInput = document.getElementById('modal-input-alasan').value.trim();
+            const gps = document.getElementById('gps-status').innerText;
+
+            if (!alasanInput) {
+                alert("HARAP ISI ALASAN! Jelaskan detail alasan pengajuan Anda.");
+                return;
+            }
+            if (!modalCompressedBase64Photo) {
+                alert("FOTO BUKTI WAJIB UNTUK PENGAJUKAN! Harap ambil foto surat dokter / bukti pendukung.");
+                return;
+            }
+
+            const statusFormatted = `Pengajuan: ${tipePengajuan}`;
+
+            const payload = {
+                storeNama: storeNama,
+                karyawanNama: karyawanNama,
+                shiftNama: "-",
+                status: statusFormatted,
+                catatan: alasanInput,
+                gps: gps,
+                fotoBase64: modalCompressedBase64Photo
+            };
+
+            const btnSubmitModal = document.getElementById('btn-submit-modal');
+            btnSubmitModal.disabled = true;
+            btnSubmitModal.innerText = "Mengirim...";
+
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const todayKey = new Date().toISOString().split('T')[0];
+                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, statusFormatted);
+
+                alert(`Berhasil Mengirim ${statusFormatted}!\nSales: ${karyawanNama}\nStore: ${storeNama}\nAlasan: ${alasanInput}`);
+                
+                closeModalPengajuan();
+                checkUserAttendanceState();
+
+            } catch (err) {
+                alert("Gagal mengirim data pengajuan ke server.");
+            } finally {
+                btnSubmitModal.disabled = false;
+                btnSubmitModal.innerText = "Kirim Pengajuan";
+            }
+        }
+
+        // SUBMIT ABSENSI NORMAL (CLOCK IN / CLOCK OUT)
         async function submitAttendance(type) {
             const storeSelect = document.getElementById('select-store');
             const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
             const karyawanNama = document.getElementById('select-employee').value;
-            const shiftSelect = document.getElementById('select-shift');
-            const shiftNama = (shiftSelect && shiftSelect.value) ? shiftSelect.value : '-';
-            const catatanInput = document.getElementById('input-catatan').value.trim();
             const gps = document.getElementById('gps-status').innerText;
 
             if (!storeSelect.value) {
@@ -358,12 +525,8 @@
                 alert("Harap pilih Nama Sales Anda!");
                 return;
             }
-            if (type.includes('Pengajuan') && !catatanInput) {
-                alert("HARAP ISI CATATAN! Jelaskan alasan Izin, Sakit, atau Cuti Anda pada kolom Catatan.");
-                return;
-            }
             if (!compressedBase64Photo) {
-                alert("FOTO WAJIB DIAMBIL! Harap ambil foto selfie / foto surat dokter terlebih dahulu.");
+                alert("FOTO WAJIB DIAMBIL! Harap ambil foto selfie terlebih dahulu sebelum absen.");
                 return;
             }
             if (gps.includes("Ditolak") || gps.includes("Mendeteksi") || gps.includes("Tidak Didukung")) {
@@ -374,19 +537,17 @@
             const payload = {
                 storeNama: storeNama,
                 karyawanNama: karyawanNama,
-                shiftNama: shiftNama,
+                shiftNama: "-",
                 status: type,
-                catatan: catatanInput || "-",
+                catatan: "-",
                 gps: gps,
                 fotoBase64: compressedBase64Photo
             };
 
             const btnIn = document.getElementById('btn-clock-in');
             const btnOut = document.getElementById('btn-clock-out');
-            const btnPengajuan = document.getElementById('btn-pengajuan');
             btnIn.disabled = true;
             btnOut.disabled = true;
-            btnPengajuan.disabled = true;
 
             try {
                 alert(`Mengirim data ${type}... Mohon tunggu.`);
@@ -399,17 +560,15 @@
                 });
 
                 const todayKey = new Date().toISOString().split('T')[0];
-                const stateSaved = type.includes('Pengajuan') ? 'Pengajuan' : type;
-                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, stateSaved);
+                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, type);
 
-                alert(`Berhasil Mengirim ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}\nCatatan: ${catatanInput || '-'}`);
+                alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}`);
                 checkUserAttendanceState();
 
             } catch (err) {
                 alert("Gagal mengirim data ke server.");
                 btnIn.disabled = false;
                 btnOut.disabled = false;
-                btnPengajuan.disabled = false;
             }
         }
     </script>

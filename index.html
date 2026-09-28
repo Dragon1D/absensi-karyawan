@@ -2,90 +2,106 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikasi Absensi Sales Store</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal Absensi Store</title>
+    
+    <!-- PWA & Mobile Native Meta Tags -->
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Absensi Store">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/712/712013.png">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style> body { font-family: 'Inter', sans-serif; } </style>
 </head>
-<body class="bg-slate-100 flex justify-center items-center min-h-screen p-4">
+<body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none">
 
-    <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[90vh] max-h-[850px]">
+    <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[92vh] max-h-[880px]">
         
         <!-- Header -->
-        <div class="bg-indigo-600 text-white p-5 flex justify-between items-center shrink-0">
+        <div class="bg-indigo-600 text-white p-4 sm:p-5 flex justify-between items-center shrink-0 shadow-md">
             <div>
-                <h1 class="text-lg font-bold">Portal Absensi Store</h1>
-                <p class="text-xs text-indigo-200" id="current-date">Memuat tanggal...</p>
+                <h1 class="text-base sm:text-lg font-bold tracking-tight">Portal Absensi Store</h1>
+                <p class="text-[11px] text-indigo-200" id="current-date">Memuat tanggal...</p>
             </div>
-            <div class="bg-indigo-500 px-3 py-1 rounded-full text-xs font-medium border border-indigo-400">
+            <div class="bg-indigo-500/80 backdrop-blur px-3 py-1 rounded-full text-[11px] font-semibold border border-indigo-300">
                 Sales Active
             </div>
         </div>
 
         <!-- Konten Utama -->
-        <div class="p-5 flex-1 overflow-y-auto space-y-4">
+        <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-3.5">
             
             <!-- Live Clock Widget -->
-            <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 text-center">
-                <p class="text-xs text-indigo-500 font-semibold uppercase tracking-wider">Waktu Saat Ini</p>
-                <h2 class="text-3xl font-extrabold text-indigo-900 mt-0.5" id="live-clock">00:00:00</h2>
+            <div class="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-3 text-center shadow-sm">
+                <p class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Waktu Real-time</p>
+                <h2 class="text-3xl font-extrabold text-indigo-900 mt-0.5 tracking-tight" id="live-clock">00:00:00</h2>
             </div>
 
-            <!-- Dropdown Store -->
+            <!-- Dropdown 1: Store -->
             <div class="space-y-1">
-                <label for="select-store" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Cabang / Store</label>
+                <label for="select-store" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Cabang / Store</label>
                 <select id="select-store" onchange="onStoreChange()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-medium text-slate-800 transition">
                     <option value="">-- Memuat Daftar Store... --</option>
                 </select>
             </div>
 
-            <!-- Dropdown Sales -->
+            <!-- Dropdown 2: Karyawan -->
             <div class="space-y-1">
-                <label for="select-employee" class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Nama Sales / Karyawan</label>
-                <select id="select-employee" disabled class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 font-medium text-slate-500 disabled:cursor-not-allowed transition">
+                <label for="select-employee" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Nama Sales / Karyawan</label>
+                <select id="select-employee" disabled onchange="checkUserAttendanceState()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition">
+                    <option value="">-- Pilih Store Terlebih Dahulu --</option>
+                </select>
+            </div>
+
+            <!-- Dropdown 3: Jam Shift -->
+            <div class="space-y-1">
+                <label for="select-shift" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jam Shift Kerja</label>
+                <select id="select-shift" disabled class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition">
                     <option value="">-- Pilih Store Terlebih Dahulu --</option>
                 </select>
             </div>
 
             <!-- Status & GPS Panel -->
-            <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm space-y-2">
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-500">Status Hari Ini:</span>
-                    <span id="attendance-status" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Belum Absen</span>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-slate-500 font-medium">Status Absen Hari Ini:</span>
+                    <span id="attendance-status" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">Belum Absen</span>
                 </div>
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-500">Lokasi GPS:</span>
-                    <span id="gps-status" class="text-slate-700 font-medium truncate max-w-[200px]">Mendeteksi lokasi...</span>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-slate-500 font-medium">Lokasi GPS:</span>
+                    <span id="gps-status" class="text-slate-700 font-semibold truncate max-w-[190px]">Mendeteksi lokasi...</span>
                 </div>
             </div>
 
             <!-- Mandatory Foto Selfie -->
-            <div class="space-y-1.5">
-                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider flex justify-between">
+            <div class="space-y-1">
+                <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
                     <span>Verifikasi Foto Selfie</span>
-                    <span class="text-rose-500 text-[10px] font-bold">*WAJIB FOTO</span>
+                    <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB FOTO</span>
                 </label>
-                <div class="border-2 border-dashed border-slate-300 rounded-xl p-3 text-center bg-slate-50 relative hover:bg-slate-100 transition">
+                <div class="border-2 border-dashed border-slate-300 rounded-xl p-2.5 text-center bg-slate-50 relative hover:bg-slate-100 transition">
                     <input type="file" accept="image/*" capture="user" id="camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewAndCompressImage(event)">
                     <div id="camera-placeholder" class="space-y-1">
-                        <svg class="w-7 h-7 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        <p class="text-xs text-slate-500">Tap untuk Ambil Foto Selfie</p>
+                        <p class="text-xs text-slate-500 font-medium">Tap untuk Ambil Foto Selfie</p>
                     </div>
-                    <img id="image-preview" class="hidden w-full h-32 object-cover rounded-lg mx-auto" alt="Preview Foto Selfie">
+                    <img id="image-preview" class="hidden w-full h-28 object-cover rounded-lg mx-auto" alt="Preview Foto Selfie">
                 </div>
             </div>
 
             <!-- Tombol Clock In / Out -->
-            <div class="grid grid-cols-2 gap-3 pt-1">
-                <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <div class="grid grid-cols-2 gap-3 pt-0.5">
+                <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
                     <span>Clock In</span>
                 </button>
-                <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
                     <span>Clock Out</span>
                 </button>
             </div>
@@ -93,18 +109,18 @@
         </div>
 
         <!-- Footer -->
-        <div class="bg-slate-50 border-t border-slate-200 p-2.5 text-center text-xs text-slate-400 shrink-0">
-            Absensi Retail App • Multi-Store v2.0
+        <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
+            Absensi Retail App • Multi-Store v2.5 PWA
         </div>
 
     </div>
 
     <script>
-        // URL WEB APP GOOGLE APPS SCRIPT
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysnYJNbtypJLXnG9OzVJF7Q9X1uMl9kjqzR_ukg-Jnq4GKGNHnbOAQbqrPd3FEvfu0/exec';
 
         let masterStores = [];
         let masterKaryawan = [];
+        let masterShifts = [];
         let compressedBase64Photo = "";
 
         setInterval(() => {
@@ -137,7 +153,7 @@
                             const addressText = area ? `${area} (${lat}, ${lon})` : `${lat}, ${lon}`;
 
                             gpsElem.innerText = addressText;
-                            gpsElem.className = "text-emerald-600 font-semibold text-xs truncate max-w-[200px]";
+                            gpsElem.className = "text-emerald-600 font-semibold text-xs truncate max-w-[190px]";
                             gpsElem.title = addressText;
                         } catch (err) {
                             gpsElem.innerText = `${lat}, ${lon}`;
@@ -165,6 +181,7 @@
                 if (data.status === "success") {
                     masterStores = data.stores || [];
                     masterKaryawan = data.karyawan || [];
+                    masterShifts = data.shifts || [];
                     populateStoreDropdown();
                 } else {
                     selectStore.innerHTML = '<option value="">-- Gagal Memuat Data --</option>';
@@ -186,17 +203,27 @@
         }
 
         function onStoreChange() {
-            const storeId = document.getElementById('select-store').value;
+            const storeSelect = document.getElementById('select-store');
+            const storeId = storeSelect.value;
+            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
+            
             const selectEmp = document.getElementById('select-employee');
+            const selectShift = document.getElementById('select-shift');
+            
             selectEmp.innerHTML = '';
+            selectShift.innerHTML = '';
             
             if (!storeId) {
                 selectEmp.disabled = true;
+                selectShift.disabled = true;
                 selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition";
+                selectShift.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition";
                 selectEmp.innerHTML = '<option value="">-- Pilih Store Terlebih Dahulu --</option>';
+                selectShift.innerHTML = '<option value="">-- Pilih Store Terlebih Dahulu --</option>';
                 return;
             }
 
+            // Filter Karyawan
             const filteredEmp = masterKaryawan.filter(k => k.storeId === storeId);
             selectEmp.disabled = false;
             selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
@@ -208,6 +235,62 @@
                 opt.textContent = `${k.nama} (${k.jabatan})`;
                 selectEmp.appendChild(opt);
             });
+
+            // Filter Shift
+            const isBatavia = storeNama.toLowerCase().includes("batavia");
+            const targetType = isBatavia ? "batavia" : "mall";
+            const filteredShifts = masterShifts.filter(s => s.tipe.toLowerCase() === targetType);
+            
+            selectShift.disabled = false;
+            selectShift.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
+            selectShift.innerHTML = '<option value="">-- Pilih Jam Shift --</option>';
+
+            filteredShifts.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.nama;
+                opt.textContent = s.nama;
+                selectShift.appendChild(opt);
+            });
+
+            resetAttendanceStateUI();
+        }
+
+        // Cek Status Absen Pengguna untuk Mencegah Double Clock-In
+        function checkUserAttendanceState() {
+            const karyawanNama = document.getElementById('select-employee').value;
+            if (!karyawanNama) {
+                resetAttendanceStateUI();
+                return;
+            }
+
+            const todayKey = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+            const stateKey = `attendance_${karyawanNama}_${todayKey}`;
+            const lastState = localStorage.getItem(stateKey);
+
+            const statusBadge = document.getElementById('attendance-status');
+            const btnIn = document.getElementById('btn-clock-in');
+            const btnOut = document.getElementById('btn-clock-out');
+
+            if (lastState === 'Clock In') {
+                statusBadge.innerText = 'Sudah Clock In';
+                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
+                btnIn.disabled = true;  // Kunci Clock In
+                btnOut.disabled = false; // Buka Clock Out
+            } else if (lastState === 'Clock Out') {
+                statusBadge.innerText = 'Sudah Clock Out (Selesai)';
+                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
+                btnIn.disabled = true;  // Kunci
+                btnOut.disabled = true; // Kunci
+            } else {
+                resetAttendanceStateUI();
+            }
+        }
+
+        function resetAttendanceStateUI() {
+            document.getElementById('attendance-status').innerText = 'Belum Absen';
+            document.getElementById('attendance-status').className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
+            document.getElementById('btn-clock-in').disabled = false;
+            document.getElementById('btn-clock-out').disabled = false;
         }
 
         function previewAndCompressImage(event) {
@@ -240,10 +323,38 @@
             };
         }
 
+        // Kalkulasi Keterlambatan Otomatis (Auto Late Detection)
+        function calculateLateStatus(type, shiftText) {
+            if (type !== 'Clock In' || !shiftText) return type;
+
+            // Ekstrak Jam Masuk dari Shift (Misal dari "Shift Pagi (10:00 - 19:00)" -> diambil "10:00")
+            const timeMatch = shiftText.match(/(\d{2}):(\d{2})/);
+            if (!timeMatch) return type;
+
+            const shiftHour = parseInt(timeMatch[1], 10);
+            const shiftMinute = parseInt(timeMatch[2], 10);
+
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+
+            const shiftTotalMinutes = (shiftHour * 60) + shiftMinute;
+            const currentTotalMinutes = (currentHour * 60) + currentMinute;
+
+            const diffMinutes = currentTotalMinutes - shiftTotalMinutes;
+
+            if (diffMinutes > 5) { // Toleransi 5 menit
+                return `Clock In (Terlambat ${diffMinutes} mnt)`;
+            } else {
+                return `Clock In (Tepat Waktu)`;
+            }
+        }
+
         async function submitAttendance(type) {
             const storeSelect = document.getElementById('select-store');
             const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
             const karyawanNama = document.getElementById('select-employee').value;
+            const shiftNama = document.getElementById('select-shift').value;
             const gps = document.getElementById('gps-status').innerText;
 
             if (!storeSelect.value) {
@@ -252,6 +363,10 @@
             }
             if (!karyawanNama) {
                 alert("Harap pilih Nama Sales Anda!");
+                return;
+            }
+            if (!shiftNama) {
+                alert("Harap pilih Jam Shift Kerja Anda!");
                 return;
             }
             if (!compressedBase64Photo) {
@@ -263,10 +378,14 @@
                 return;
             }
 
+            // Hitung Keterlambatan Otomatis
+            const statusFormatted = calculateLateStatus(type, shiftNama);
+
             const payload = {
                 storeNama: storeNama,
                 karyawanNama: karyawanNama,
-                status: type,
+                shiftNama: shiftNama,
+                status: statusFormatted,
                 gps: gps,
                 fotoBase64: compressedBase64Photo
             };
@@ -277,7 +396,7 @@
             btnOut.disabled = true;
 
             try {
-                alert(`Mengirim data & mengunggah foto ke Drive... Mohon tunggu.`);
+                alert(`Mengirim data ${type}... Mohon tunggu.`);
                 
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
@@ -286,13 +405,15 @@
                     body: JSON.stringify(payload)
                 });
 
-                alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}\nFoto telah tersimpan di Google Drive.`);
-                document.getElementById('attendance-status').innerText = type === 'Clock In' ? 'Sudah Clock In' : 'Sudah Clock Out';
-                document.getElementById('attendance-status').className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800";
+                // Simpan State Ke LocalStorage agar Tidak Bisa Double Absen Hari Ini
+                const todayKey = new Date().toISOString().split('T')[0];
+                localStorage.setItem(`attendance_${karyawanNama}_${todayKey}`, type);
+
+                alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}\nStatus: ${statusFormatted}`);
+                checkUserAttendanceState();
 
             } catch (err) {
                 alert("Gagal mengirim absensi ke server.");
-            } finally {
                 btnIn.disabled = false;
                 btnOut.disabled = false;
             }

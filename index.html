@@ -122,7 +122,7 @@
         </div>
 
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v4.1 Bulletproof Edition
+            Absensi Retail App • Multi-Store v4.3 Production Certified
         </div>
 
     </div>
@@ -231,7 +231,7 @@
                     </div>
 
                     <div class="flex gap-2">
-                        <input type="text" id="hr-filter-search" onkeyup="filterHRCardsLocally()" placeholder="Cari Sales / Store..." class="flex-1 px-2.5 py-1 border border-slate-300 rounded-lg text-xs bg-white">
+                        <input type="text" id="hr-filter-search" onkeyup="filterHRCardsLocally()" placeholder="Cari Sales / Store / Alasan..." class="flex-1 px-2.5 py-1 border border-slate-300 rounded-lg text-xs bg-white">
                         <button onclick="fetchAdminHRData()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow cursor-pointer">Cari 🔍</button>
                         <button onclick="exportHRDataToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer">📥 CSV</button>
                         <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer">🖨️ PDF</button>
@@ -327,9 +327,9 @@
             initGPS();
             await fetchMasterData();
             
-            const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('hr-filter-start').value = todayStr;
-            document.getElementById('hr-filter-end').value = todayStr;
+            const localTodayStr = new Date().toLocaleDateString('en-CA');
+            document.getElementById('hr-filter-start').value = localTodayStr;
+            document.getElementById('hr-filter-end').value = localTodayStr;
         };
 
         function initGPS() {
@@ -440,7 +440,10 @@
 
         async function checkUserAttendanceState() {
             clearPhotoPreview();
+            const storeSelect = document.getElementById('select-store');
+            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
             const karyawanNama = document.getElementById('select-employee').value;
+            
             if (!karyawanNama) { resetAttendanceStateUI(); return; }
 
             const statusBadge = document.getElementById('attendance-status');
@@ -453,7 +456,7 @@
             statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 animate-pulse";
 
             try {
-                const res = await fetch(`${SCRIPT_URL}?action=check_status&karyawan=${encodeURIComponent(karyawanNama)}`);
+                const res = await fetch(`${SCRIPT_URL}?action=check_status&karyawan=${encodeURIComponent(karyawanNama)}&store=${encodeURIComponent(storeNama)}`);
                 const data = await res.json();
 
                 if (data.status === "success" && data.lastStatus !== "Belum Absen") {
@@ -463,8 +466,6 @@
                         statusBadge.innerText = 'Sudah Clock In';
                         statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
                         btnIn.disabled = true; btnOut.disabled = false; btnPengajuan.disabled = false;
-                        
-                        // KUNCI DROPDOWN OTOMATIS AGAR TIDAK BISA SALAH CLOCK OUT
                         lockUserDropdowns(true);
                     } else if (serverStatus === 'Clock Out') {
                         statusBadge.innerText = 'Sudah Clock Out (Selesai)';
@@ -479,7 +480,10 @@
                     }
                     return;
                 }
-            } catch (err) {}
+            } catch (err) {
+                statusBadge.innerText = "Koneksi Bermasalah";
+                statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800";
+            }
 
             resetAttendanceStateUI();
         }
@@ -530,9 +534,22 @@
             document.getElementById('camera-placeholder').classList.remove('hidden');
         }
 
+        function clearModalPhotoOnly() {
+            modalCompressedBase64Photo = "";
+            document.getElementById('modal-camera-input').value = "";
+            document.getElementById('modal-image-preview').src = "";
+            document.getElementById('modal-image-preview').classList.add('hidden');
+            document.getElementById('modal-camera-placeholder').classList.remove('hidden');
+        }
+
+        function resetModalFormFull() {
+            clearModalPhotoOnly();
+            document.getElementById('modal-input-alasan').value = "";
+        }
+
         function previewAndCompressImage(event) {
             const file = event.target.files[0];
-            if (!file) return;
+            if (!file) { clearPhotoPreview(); return; }
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(e) {
@@ -540,12 +557,17 @@
                 img.src = e.target.result;
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
                     const MAX_WIDTH = 600;
-                    const scale = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scale;
+                    if (width > MAX_WIDTH) {
+                        height = Math.round((height * MAX_WIDTH) / width);
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, width, height);
                     compressedBase64Photo = canvas.toDataURL('image/jpeg', 0.6);
                     document.getElementById('image-preview').src = compressedBase64Photo;
                     document.getElementById('image-preview').classList.remove('hidden');
@@ -556,7 +578,7 @@
 
         function previewAndCompressModalImage(event) {
             const file = event.target.files[0];
-            if (!file) return;
+            if (!file) { clearModalPhotoOnly(); return; }
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = function(e) {
@@ -564,12 +586,17 @@
                 img.src = e.target.result;
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
                     const MAX_WIDTH = 600;
-                    const scale = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scale;
+                    if (width > MAX_WIDTH) {
+                        height = Math.round((height * MAX_WIDTH) / width);
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, width, height);
                     modalCompressedBase64Photo = canvas.toDataURL('image/jpeg', 0.6);
                     document.getElementById('modal-image-preview').src = modalCompressedBase64Photo;
                     document.getElementById('modal-image-preview').classList.remove('hidden');
@@ -603,8 +630,7 @@
                     try {
                         await fetch(SCRIPT_URL, {
                             method: 'POST',
-                            mode: 'no-cors',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'text/plain' },
                             body: JSON.stringify(item)
                         });
                         const delTx = db.transaction("offline_queue", "readwrite");
@@ -643,7 +669,7 @@
             const gps = document.getElementById('gps-status').innerText;
 
             if (!storeSelect.value || !karyawanNama || !compressedBase64Photo) {
-                alert("Harap lengkapi Store, Nama Sales, dan Foto Selfie!");
+                alert("Harap lengkapi Store, Nama Sales, dan Foto Selfie WAJIB dilampirkan!");
                 return;
             }
 
@@ -699,6 +725,7 @@
         }
 
         function openModalPengajuan() {
+            resetModalFormFull();
             const storeSelect = document.getElementById('select-store');
             const karyawanNama = document.getElementById('select-employee').value;
             const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
@@ -712,7 +739,10 @@
             document.getElementById('modal-pengajuan').classList.remove('hidden');
         }
 
-        function closeModalPengajuan() { document.getElementById('modal-pengajuan').classList.add('hidden'); }
+        function closeModalPengajuan() { 
+            resetModalFormFull();
+            document.getElementById('modal-pengajuan').classList.add('hidden'); 
+        }
 
         async function submitModalPengajuan() {
             const storeSelect = document.getElementById('select-store');
@@ -744,10 +774,11 @@
                 fotoBase64: modalCompressedBase64Photo
             };
 
-            closeModalPengajuan();
+            document.getElementById('modal-pengajuan').classList.add('hidden');
 
             if (!navigator.onLine) {
                 saveToOfflineQueue(payload);
+                resetModalFormFull();
                 checkUserAttendanceState();
                 btnSubmit.disabled = false;
                 document.getElementById('btn-modal-text').innerText = "Kirim Pengajuan";
@@ -766,9 +797,11 @@
                 } else {
                     alert(`Berhasil Mengirim Pengajuan ${tipePengajuan}!`);
                 }
+                resetModalFormFull();
                 checkUserAttendanceState();
             } catch (err) {
                 saveToOfflineQueue(payload);
+                resetModalFormFull();
                 checkUserAttendanceState();
             }
             btnSubmit.disabled = false;
@@ -827,6 +860,12 @@
             const startDate = document.getElementById('hr-filter-start').value;
             const endDate = document.getElementById('hr-filter-end').value;
 
+            if (startDate && endDate && startDate > endDate) {
+                alert("Tanggal Awal tidak boleh lebih besar dari Tanggal Akhir!");
+                container.innerHTML = '<p class="text-xs text-rose-500 text-center py-4">Rentang tanggal tidak valid.</p>';
+                return;
+            }
+
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=admin&startDate=${startDate}&endDate=${endDate}`);
                 const data = await res.json();
@@ -847,7 +886,9 @@
                 const matchSearch = l.karyawan.toLowerCase().includes(search) || 
                                     l.store.toLowerCase().includes(search) ||
                                     l.status.toLowerCase().includes(search) ||
-                                    l.jenisPengajuan.toLowerCase().includes(search);
+                                    l.jenisPengajuan.toLowerCase().includes(search) ||
+                                    (l.catatan && l.catatan.toLowerCase().includes(search)) ||
+                                    (l.gps && l.gps.toLowerCase().includes(search));
                 
                 const isApproved = l.status.includes('DI ACC') || l.approvalStatus === 'DI ACC';
                 const isRejected = l.status.includes('DI REJECT') || l.approvalStatus === 'DI REJECT';
@@ -899,6 +940,8 @@
                 const isRejected = log.status.includes('DI REJECT') || log.approvalStatus === 'DI REJECT';
                 const isPending = isLeave && !isApproved && !isRejected;
 
+                const directImageUrl = convertDriveUrlToDirectStream(log.fotoUrl);
+
                 const itemHtml = `
                     <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
                         <div class="flex justify-between font-bold text-slate-800">
@@ -912,7 +955,7 @@
                             ${log.catatan !== '-' ? `<p class="italic text-slate-700">📝 Note: "${log.catatan}"</p>` : ''}
                             ${log.alasanReject !== '-' ? `<p class="text-rose-600 font-medium">⚠️ Alasan Reject: "${log.alasanReject}"</p>` : ''}
                             <p>📍 GPS: ${log.gps}</p>
-                            ${log.fotoUrl.includes('http') ? `<p><button onclick="openLightbox('${log.fotoUrl}')" class="text-indigo-600 font-semibold underline cursor-pointer">🖼️ Preview Foto Bukti (Lightbox)</button></p>` : ''}
+                            ${directImageUrl ? `<p><button onclick="openLightbox('${directImageUrl}')" class="text-indigo-600 font-semibold underline cursor-pointer">🖼️ Preview Foto Bukti (Lightbox)</button></p>` : ''}
                         </div>
                         
                         ${isLeave ? `
@@ -943,6 +986,15 @@
             });
         }
 
+        function convertDriveUrlToDirectStream(rawUrl) {
+            if (!rawUrl || !rawUrl.includes('drive.google.com')) return '';
+            const match = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (match && match[1]) {
+                return `https://lh3.googleusercontent.com/d/${match[1]}`;
+            }
+            return rawUrl;
+        }
+
         async function handleHRApprovalClick(rowId, statusVal) {
             let reason = "-";
             if (statusVal === 'Rejected') {
@@ -955,10 +1007,9 @@
             }
 
             try {
-                await fetch(SCRIPT_URL, {
+                const res = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({ 
                         action: "update_approval", 
                         rowId: rowId, 
@@ -992,16 +1043,20 @@
             csvContent += "Timestamp,Nama Store,Nama Karyawan,Status Absen,Jenis Pengajuan,Catatan,GPS,Approval HR,Alasan Reject\n";
 
             fetchedLogsCache.forEach(l => {
+                const cleanCatatan = (l.catatan || "-").replace(/"/g, '""').replace(/\n/g, ' ');
+                const cleanAlasan = (l.alasanReject || "-").replace(/"/g, '""').replace(/\n/g, ' ');
+                const cleanGps = (l.gps || "-").replace(/"/g, '""');
+
                 const row = [
                     `"${new Date(l.timestamp).toLocaleString('id-ID')}"`,
                     `"${l.store}"`,
                     `"${l.karyawan}"`,
                     `"${l.status}"`,
                     `"${l.jenisPengajuan}"`,
-                    `"${l.catatan}"`,
-                    `"${l.gps}"`,
+                    `"${cleanCatatan}"`,
+                    `"${cleanGps}"`,
                     `"${l.approvalStatus}"`,
-                    `"${l.alasanReject}"`,
+                    `"${cleanAlasan}"`,
                 ].join(",");
                 csvContent += row + "\n";
             });
@@ -1009,7 +1064,7 @@
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Rekap_Absensi_HR_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute("download", `Rekap_Absensi_HR_${new Date().toLocaleDateString('en-CA')}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

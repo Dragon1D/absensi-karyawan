@@ -17,6 +17,7 @@
 </head>
 <body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none relative">
 
+    <!-- Container Utama Aplikasi -->
     <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[94vh] max-h-[900px]">
         
         <!-- Header -->
@@ -109,13 +110,13 @@
         </div>
 
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v3.1 HR Approval System
+            Absensi Retail App • Multi-Store v3.2 Enterprise Ready
         </div>
 
     </div>
 
 
-    <!-- MODAL PENGAJUKAN SAKIT/IZIN/CUTI -->
+    <!-- MODAL 1: FORM PENGAJUKAN SAKIT/IZIN/CUTI -->
     <div id="modal-pengajuan" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
             <div class="bg-amber-500 text-white p-4 flex justify-between items-center shrink-0">
@@ -165,14 +166,14 @@
     </div>
 
 
-    <!-- MODAL PORTAL ADMIN HR -->
-    <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col h-[88vh] max-h-[800px] animate-in fade-in zoom-in duration-200">
+    <!-- MODAL 2: PORTAL ADMIN HR WITH DATE RANGE & SEARCH FILTER -->
+    <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-3 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[90vh] max-h-[850px] animate-in fade-in zoom-in duration-200">
             
-            <div class="bg-indigo-700 text-white p-4 flex justify-between items-center shrink-0">
+            <div class="bg-indigo-700 text-white p-3.5 sm:p-4 flex justify-between items-center shrink-0">
                 <div>
                     <h3 class="font-bold text-sm">Dashboard Monitoring HR</h3>
-                    <p class="text-[10px] text-indigo-200">Approval & Live Store Attendance</p>
+                    <p class="text-[10px] text-indigo-200">Approval, Date Filter & Export</p>
                 </div>
                 <button onclick="closeHRPortalModal()" class="text-white hover:bg-indigo-800 rounded-full p-1 cursor-pointer">✕</button>
             </div>
@@ -188,30 +189,55 @@
             </div>
 
             <!-- Dashboard Content Screen -->
-            <div id="hr-dashboard-screen" class="hidden flex-1 overflow-y-auto p-4 space-y-4">
+            <div id="hr-dashboard-screen" class="hidden flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
                 
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
-                        <p class="text-[9px] font-bold text-emerald-600 uppercase">Hadir (In)</p>
-                        <p id="hr-count-in" class="text-xl font-extrabold text-emerald-800">0</p>
+                <!-- Filter Panel HR -->
+                <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-600 uppercase">Dari Tanggal</label>
+                            <input type="date" id="hr-filter-start" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-600 uppercase">Sampai Tanggal</label>
+                            <input type="date" id="hr-filter-end" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white">
+                        </div>
                     </div>
-                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-center">
-                        <p class="text-[9px] font-bold text-rose-600 uppercase">Pulang (Out)</p>
-                        <p id="hr-count-out" class="text-xl font-extrabold text-rose-800">0</p>
-                    </div>
-                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-center">
-                        <p class="text-[9px] font-bold text-amber-600 uppercase">Pengajuan</p>
-                        <p id="hr-count-leave" class="text-xl font-extrabold text-amber-800">0</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="hr-filter-search" onkeyup="filterHRCardsLocally()" placeholder="Cari Sales / Store..." class="flex-1 px-2.5 py-1 border border-slate-300 rounded-lg text-xs bg-white">
+                        <button onclick="fetchAdminHRData()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow cursor-pointer">
+                            Cari 🔍
+                        </button>
+                        <button onclick="exportHRDataToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer" title="Ekspor CSV">
+                            📥 CSV
+                        </button>
                     </div>
                 </div>
 
+                <!-- Stats Ringkas -->
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2 text-center">
+                        <p class="text-[9px] font-bold text-emerald-600 uppercase">Clock In</p>
+                        <p id="hr-count-in" class="text-lg font-extrabold text-emerald-800">0</p>
+                    </div>
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-2 text-center">
+                        <p class="text-[9px] font-bold text-rose-600 uppercase">Clock Out</p>
+                        <p id="hr-count-out" class="text-lg font-extrabold text-rose-800">0</p>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-2 text-center">
+                        <p class="text-[9px] font-bold text-amber-600 uppercase">Pengajuan</p>
+                        <p id="hr-count-leave" class="text-lg font-extrabold text-amber-800">0</p>
+                    </div>
+                </div>
+
+                <!-- List Aktivitas -->
                 <div class="space-y-2">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between items-center">
-                        <span>Aktivitas & Approval (Hari Ini)</span>
+                        <span>Aktivitas Presensi & Pengajuan</span>
                         <button onclick="fetchAdminHRData()" class="text-[10px] text-indigo-600 hover:underline">Refresh 🔄</button>
                     </h4>
                     <div id="hr-approval-list" class="space-y-2">
-                        <p class="text-xs text-slate-400 text-center py-4">Memuat data real-time...</p>
+                        <p class="text-xs text-slate-400 text-center py-4">Memuat data live...</p>
                     </div>
                 </div>
 
@@ -227,6 +253,7 @@
 
         let masterStores = [];
         let masterKaryawan = [];
+        let fetchedLogsCache = [];
         let compressedBase64Photo = "";
         let modalCompressedBase64Photo = "";
         let db;
@@ -256,6 +283,11 @@
         window.onload = async function() {
             initGPS();
             await fetchMasterData();
+            
+            // Set Default Date Filter ke Hari Ini
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('hr-filter-start').value = todayStr;
+            document.getElementById('hr-filter-end').value = todayStr;
         };
 
         function initGPS() {
@@ -441,7 +473,7 @@
             store.add(payload);
             tx.oncomplete = function() {
                 updateOfflineBadge();
-                alert(`MODE OFFLINE TERDETEKSI!\nData ${payload.status} tersimpan secara aman di HP Anda. Data akan otomatis dikirim ke server saat Anda terhubung ke internet.`);
+                alert(`MODE OFFLINE TERDETEKSI!\nData ${payload.status} tersimpan di HP Anda. Data otomatis terkirim saat online.`);
             };
         }
 
@@ -606,7 +638,7 @@
             }
         }
 
-        // HR PORTAL LOGIC
+        // HR PORTAL LOGIC WITH DATE FILTER & REASON PROMPT
         function openHRPortalModal() { document.getElementById('modal-hr-portal').classList.remove('hidden'); }
         function closeHRPortalModal() { document.getElementById('modal-hr-portal').classList.add('hidden'); }
 
@@ -625,85 +657,152 @@
             const container = document.getElementById('hr-approval-list');
             container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Memuat data live...</p>';
 
+            const startDate = document.getElementById('hr-filter-start').value;
+            const endDate = document.getElementById('hr-filter-end').value;
+
             try {
-                const res = await fetch(`${SCRIPT_URL}?action=admin`);
+                const res = await fetch(`${SCRIPT_URL}?action=admin&startDate=${startDate}&endDate=${endDate}`);
                 const data = await res.json();
 
                 if (data.status === "success") {
-                    const logs = data.logs || [];
-                    
-                    let countIn = 0, countOut = 0, countLeave = 0;
-                    logs.forEach(l => {
-                        if (l.status === 'Clock In') countIn++;
-                        else if (l.status === 'Clock Out') countOut++;
-                        else countLeave++;
-                    });
-
-                    document.getElementById('hr-count-in').innerText = countIn;
-                    document.getElementById('hr-count-out').innerText = countOut;
-                    document.getElementById('hr-count-leave').innerText = countLeave;
-
-                    if (logs.length === 0) {
-                        container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Belum ada transaksi absen hari ini.</p>';
-                        return;
-                    }
-
-                    container.innerHTML = '';
-                    logs.reverse().forEach(log => {
-                        const isLeave = log.status.includes('Pengajuan');
-                        const isApproved = log.status.includes('ACC');
-                        const isRejected = log.status.includes('REJECT');
-
-                        const itemHtml = `
-                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
-                                <div class="flex justify-between font-bold text-slate-800">
-                                    <span>${log.karyawan}</span>
-                                    <span class="${isLeave ? (isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')) : 'text-indigo-600'}">${log.status}</span>
-                                </div>
-                                <div class="text-slate-500 text-[11px] space-y-0.5">
-                                    <p>🏬 Store: ${log.store}</p>
-                                    ${log.catatan !== '-' ? `<p class="italic text-slate-700">📝 Note: "${log.catatan}"</p>` : ''}
-                                    <p>📍 GPS: ${log.gps}</p>
-                                    ${log.fotoUrl.includes('http') ? `<p><a href="${log.fotoUrl}" target="_blank" class="text-indigo-600 font-semibold underline">🖼️ Lihat Bukti Foto Drive</a></p>` : ''}
-                                </div>
-                                ${isLeave ? `
-                                    <div class="pt-1 flex justify-between items-center border-t border-slate-200">
-                                        <span class="text-[10px] font-bold ${isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')}">
-                                            Status: ${log.approvalStatus}
-                                        </span>
-                                        <div class="flex gap-1">
-                                            <button onclick="updateHRApproval(${log.rowId}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
-                                                ACC (Approve) ✅
-                                            </button>
-                                            <button onclick="updateHRApproval(${log.rowId}, 'Rejected')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
-                                                REJECT ❌
-                                            </button>
-                                        </div>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                        container.insertAdjacentHTML('beforeend', itemHtml);
-                    });
+                    fetchedLogsCache = data.logs || [];
+                    renderHRLogCards(fetchedLogsCache);
                 }
             } catch (err) {
                 container.innerHTML = '<p class="text-xs text-rose-500 text-center py-4">Gagal memuat data admin HR.</p>';
             }
         }
 
-        async function updateHRApproval(rowId, statusVal) {
+        function filterHRCardsLocally() {
+            const query = document.getElementById('hr-filter-search').value.toLowerCase();
+            const filtered = fetchedLogsCache.filter(l => 
+                l.karyawan.toLowerCase().includes(query) || 
+                l.store.toLowerCase().includes(query) ||
+                l.status.toLowerCase().includes(query)
+            );
+            renderHRLogCards(filtered);
+        }
+
+        function renderHRLogCards(logs) {
+            const container = document.getElementById('hr-approval-list');
+            
+            let countIn = 0, countOut = 0, countLeave = 0;
+            logs.forEach(l => {
+                if (l.status === 'Clock In') countIn++;
+                else if (l.status === 'Clock Out') countOut++;
+                else countLeave++;
+            });
+
+            document.getElementById('hr-count-in').innerText = countIn;
+            document.getElementById('hr-count-out').innerText = countOut;
+            document.getElementById('hr-count-leave').innerText = countLeave;
+
+            if (logs.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Tidak ada data untuk rentang tanggal / pencarian ini.</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            logs.slice().reverse().forEach(log => {
+                const isLeave = log.status.includes('Pengajuan');
+                const isApproved = log.status.includes('ACC');
+                const isRejected = log.status.includes('REJECT');
+
+                const itemHtml = `
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
+                        <div class="flex justify-between font-bold text-slate-800">
+                            <span>${log.karyawan}</span>
+                            <span class="${isLeave ? (isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')) : 'text-indigo-600'}">${log.status}</span>
+                        </div>
+                        <div class="text-slate-500 text-[11px] space-y-0.5">
+                            <p>🏬 Store: ${log.store}</p>
+                            <p>📅 Waktu: ${new Date(log.timestamp).toLocaleString('id-ID')}</p>
+                            ${log.catatan !== '-' ? `<p class="italic text-slate-700">📝 Note: "${log.catatan}"</p>` : ''}
+                            ${log.alasanReject !== '-' ? `<p class="text-rose-600 font-medium">⚠️ Alasan Reject: "${log.alasanReject}"</p>` : ''}
+                            <p>📍 GPS: ${log.gps}</p>
+                            ${log.fotoUrl.includes('http') ? `<p><a href="${log.fotoUrl}" target="_blank" class="text-indigo-600 font-semibold underline">🖼️ Lihat Bukti Foto Drive</a></p>` : ''}
+                        </div>
+                        ${isLeave ? `
+                            <div class="pt-1 flex justify-between items-center border-t border-slate-200">
+                                <span class="text-[10px] font-bold ${isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')}">
+                                    Status: ${log.approvalStatus}
+                                </span>
+                                <div class="flex gap-1">
+                                    <button onclick="handleHRApprovalClick(${log.rowId}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
+                                        ACC (Approve) ✅
+                                    </button>
+                                    <button onclick="handleHRApprovalClick(${log.rowId}, 'Rejected')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
+                                        REJECT ❌
+                                    </button>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+
+        async function handleHRApprovalClick(rowId, statusVal) {
+            let reason = "-";
+            if (statusVal === 'Rejected') {
+                const promptVal = prompt("Masukkan alasan penolakan pengajuan ini (WAJIB ISIAN FOR HR):");
+                if (!promptVal || promptVal.trim() === "") {
+                    alert("PENOLAKAN DIBATALKAN! Alasan penolakan wajib diisi oleh HR.");
+                    return;
+                }
+                reason = promptVal.trim();
+            }
+
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: "update_approval", rowId: rowId, approvalStatus: statusVal })
+                    body: JSON.stringify({ 
+                        action: "update_approval", 
+                        rowId: rowId, 
+                        approvalStatus: statusVal,
+                        alasanReject: reason
+                    })
                 });
                 alert(`Berhasil memperbarui pengajuan menjadi: ${statusVal === 'Approved' ? 'DI ACC ✅' : 'DI REJECT ❌'}`);
                 fetchAdminHRData();
             } catch (err) {
                 alert("Gagal memperbarui status approval.");
             }
+        }
+
+        function exportHRDataToCSV() {
+            if (!fetchedLogsCache || fetchedLogsCache.length === 0) {
+                alert("Tidak ada data untuk diekspor!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Timestamp,Nama Store,Nama Karyawan,Status Absen,Catatan,GPS,Approval HR,Alasan Reject\n";
+
+            fetchedLogsCache.forEach(l => {
+                const row = [
+                    `"${new Date(l.timestamp).toLocaleString('id-ID')}"`,
+                    `"${l.store}"`,
+                    `"${l.karyawan}"`,
+                    `"${l.status}"`,
+                    `"${l.catatan}"`,
+                    `"${l.gps}"`,
+                    `"${l.approvalStatus}"`,
+                    `"${l.alasanReject}"`
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Rekap_Absensi_HR_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>

@@ -44,20 +44,31 @@
                 <h2 class="text-3xl font-extrabold text-indigo-900 mt-0.5 tracking-tight" id="live-clock">00:00:00</h2>
             </div>
 
+            <!-- Store Dropdown -->
             <div class="space-y-1">
-                <label for="select-store" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Cabang / Store</label>
+                <div class="flex justify-between items-center">
+                    <label for="select-store" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Cabang / Store</label>
+                    <span id="store-lock-badge" class="hidden text-[10px] font-bold text-slate-400">🔒 Terkunci</span>
+                </div>
                 <select id="select-store" onchange="onStoreChange()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-medium text-slate-800 transition">
                     <option value="">-- Memuat Daftar Store... --</option>
                 </select>
             </div>
 
+            <!-- Employee Dropdown + Reset Button -->
             <div class="space-y-1">
-                <label for="select-employee" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Nama Sales / Karyawan</label>
+                <div class="flex justify-between items-center">
+                    <label for="select-employee" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Nama Sales / Karyawan</label>
+                    <button id="btn-reset-user" onclick="resetUserSelection()" class="hidden text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer">
+                        🔄 Ganti Sales
+                    </button>
+                </div>
                 <select id="select-employee" disabled onchange="checkUserAttendanceState()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition">
                     <option value="">-- Pilih Store Terlebih Dahulu --</option>
                 </select>
             </div>
 
+            <!-- Status Box -->
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm space-y-1.5">
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-500 font-medium">Status Absen Hari Ini:</span>
@@ -69,6 +80,7 @@
                 </div>
             </div>
 
+            <!-- Foto Selfie -->
             <div class="space-y-1">
                 <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
                     <span>Foto Selfie Presensi Harian</span>
@@ -87,6 +99,7 @@
                 </div>
             </div>
 
+            <!-- Tombol Action -->
             <div class="grid grid-cols-2 gap-2.5 pt-1">
                 <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
                     <span id="btn-in-text">Clock In</span>
@@ -109,7 +122,7 @@
         </div>
 
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v4.0 Ultimate Secure
+            Absensi Retail App • Multi-Store v4.1 Bulletproof Edition
         </div>
 
     </div>
@@ -167,7 +180,7 @@
     </div>
 
 
-    <!-- MODAL 2: PORTAL ADMIN HR WITH SERVER PIN AUTH & LIGHTBOX -->
+    <!-- MODAL 2: PORTAL ADMIN HR -->
     <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-3 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[92vh] max-h-[880px] animate-in fade-in zoom-in duration-200">
             
@@ -194,7 +207,6 @@
             <!-- Dashboard Content Screen -->
             <div id="hr-dashboard-screen" class="hidden flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
                 
-                <!-- Filter Panel HR -->
                 <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 space-y-2">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -207,7 +219,6 @@
                         </div>
                     </div>
                     
-                    <!-- Quick Filter Tabs per Jenis Pengajuan & Status -->
                     <div class="flex gap-1 overflow-x-auto py-1">
                         <button onclick="setStatusTabFilter('all')" id="tab-status-all" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0">Semua</button>
                         <button onclick="setStatusTabFilter('pending')" id="tab-status-pending" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">Pending ⚡</button>
@@ -221,19 +232,12 @@
 
                     <div class="flex gap-2">
                         <input type="text" id="hr-filter-search" onkeyup="filterHRCardsLocally()" placeholder="Cari Sales / Store..." class="flex-1 px-2.5 py-1 border border-slate-300 rounded-lg text-xs bg-white">
-                        <button onclick="fetchAdminHRData()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow cursor-pointer">
-                            Cari 🔍
-                        </button>
-                        <button onclick="exportHRDataToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer" title="Ekspor CSV">
-                            📥 CSV
-                        </button>
-                        <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer" title="Cetak PDF">
-                            🖨️ PDF
-                        </button>
+                        <button onclick="fetchAdminHRData()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow cursor-pointer">Cari 🔍</button>
+                        <button onclick="exportHRDataToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer">📥 CSV</button>
+                        <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer">🖨️ PDF</button>
                     </div>
                 </div>
 
-                <!-- Stats Breakdown 6 Card -->
                 <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                     <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-1.5 text-center">
                         <p class="text-[8px] font-bold text-emerald-600 uppercase">Clock In</p>
@@ -261,7 +265,6 @@
                     </div>
                 </div>
 
-                <!-- List Aktivitas -->
                 <div class="space-y-2">
                     <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between items-center">
                         <span>Aktivitas Presensi & Pengajuan</span>
@@ -278,7 +281,7 @@
     </div>
 
 
-    <!-- MODAL 3: IN-APP PHOTO LIGHTBOX PREVIEW -->
+    <!-- MODAL 3: IN-APP PHOTO LIGHTBOX -->
     <div id="modal-lightbox" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden" onclick="closeLightbox()">
         <div class="relative max-w-lg w-full bg-black rounded-2xl overflow-hidden p-2 shadow-2xl" onclick="event.stopPropagation()">
             <button onclick="closeLightbox()" class="absolute top-3 right-3 bg-slate-800 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 cursor-pointer">✕</button>
@@ -407,6 +410,7 @@
         }
 
         function onStoreChange() {
+            clearPhotoPreview();
             const storeSelect = document.getElementById('select-store');
             const storeId = storeSelect.value;
             const selectEmp = document.getElementById('select-employee');
@@ -435,6 +439,7 @@
         }
 
         async function checkUserAttendanceState() {
+            clearPhotoPreview();
             const karyawanNama = document.getElementById('select-employee').value;
             if (!karyawanNama) { resetAttendanceStateUI(); return; }
 
@@ -458,19 +463,54 @@
                         statusBadge.innerText = 'Sudah Clock In';
                         statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
                         btnIn.disabled = true; btnOut.disabled = false; btnPengajuan.disabled = false;
+                        
+                        // KUNCI DROPDOWN OTOMATIS AGAR TIDAK BISA SALAH CLOCK OUT
+                        lockUserDropdowns(true);
                     } else if (serverStatus === 'Clock Out') {
                         statusBadge.innerText = 'Sudah Clock Out (Selesai)';
                         statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
                         btnIn.disabled = true; btnOut.disabled = true; btnPengajuan.disabled = true;
+                        lockUserDropdowns(true);
                     } else if (serverStatus.includes('Pengajuan')) {
                         statusBadge.innerText = `Sudah Mengajukan (${serverStatus})`;
                         statusBadge.className = serverStatus.includes('DI ACC') ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800' : (serverStatus.includes('DI REJECT') ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800' : 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800');
                         btnIn.disabled = true; btnOut.disabled = true; btnPengajuan.disabled = true;
+                        lockUserDropdowns(true);
                     }
                     return;
                 }
             } catch (err) {}
 
+            resetAttendanceStateUI();
+        }
+
+        function lockUserDropdowns(isLocked) {
+            const selectStore = document.getElementById('select-store');
+            const selectEmp = document.getElementById('select-employee');
+            const badgeStore = document.getElementById('store-lock-badge');
+            const btnReset = document.getElementById('btn-reset-user');
+
+            if (isLocked) {
+                selectStore.disabled = true;
+                selectEmp.disabled = true;
+                selectStore.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-200 text-slate-600 font-bold cursor-not-allowed transition";
+                selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-200 text-slate-600 font-bold cursor-not-allowed transition";
+                badgeStore.classList.remove('hidden');
+                btnReset.classList.remove('hidden');
+            } else {
+                selectStore.disabled = false;
+                selectEmp.disabled = false;
+                selectStore.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
+                selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
+                badgeStore.classList.add('hidden');
+                btnReset.classList.add('hidden');
+            }
+        }
+
+        function resetUserSelection() {
+            lockUserDropdowns(false);
+            document.getElementById('select-employee').value = "";
+            clearPhotoPreview();
             resetAttendanceStateUI();
         }
 
@@ -480,6 +520,14 @@
             document.getElementById('btn-clock-in').disabled = false;
             document.getElementById('btn-clock-out').disabled = false;
             document.getElementById('btn-open-pengajuan').disabled = false;
+        }
+
+        function clearPhotoPreview() {
+            compressedBase64Photo = "";
+            document.getElementById('camera-input').value = "";
+            document.getElementById('image-preview').src = "";
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('camera-placeholder').classList.remove('hidden');
         }
 
         function previewAndCompressImage(event) {
@@ -603,6 +651,9 @@
             const btnOut = document.getElementById('btn-clock-out');
             btnIn.disabled = true; btnOut.disabled = true;
 
+            if (type === 'Clock In') document.getElementById('btn-in-text').innerText = "Mengirim...";
+            if (type === 'Clock Out') document.getElementById('btn-out-text').innerText = "Mengirim...";
+
             const payload = {
                 timestamp: new Date().toISOString(),
                 storeNama: storeNama,
@@ -617,7 +668,10 @@
 
             if (!navigator.onLine) {
                 saveToOfflineQueue(payload);
+                clearPhotoPreview();
                 checkUserAttendanceState();
+                document.getElementById('btn-in-text').innerText = "Clock In";
+                document.getElementById('btn-out-text').innerText = "Clock Out";
                 return;
             }
 
@@ -633,11 +687,15 @@
                 } else {
                     alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}`);
                 }
+                clearPhotoPreview();
                 checkUserAttendanceState();
             } catch (err) {
                 saveToOfflineQueue(payload);
+                clearPhotoPreview();
                 checkUserAttendanceState();
             }
+            document.getElementById('btn-in-text').innerText = "Clock In";
+            document.getElementById('btn-out-text').innerText = "Clock Out";
         }
 
         function openModalPengajuan() {
@@ -717,7 +775,7 @@
             document.getElementById('btn-modal-text').innerText = "Kirim Pengajuan";
         }
 
-        // PORTAL HR LOGIC WITH SECURE SERVER-SIDE PIN AUTH
+        // PORTAL HR LOGIC
         function openHRPortalModal() { document.getElementById('modal-hr-portal').classList.remove('hidden'); }
         function closeHRPortalModal() { document.getElementById('modal-hr-portal').classList.add('hidden'); }
 

@@ -17,7 +17,6 @@
 </head>
 <body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none relative">
 
-    <!-- Container Utama Aplikasi -->
     <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[94vh] max-h-[900px]">
         
         <!-- Header -->
@@ -110,7 +109,7 @@
         </div>
 
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v3.2 Enterprise Ready
+            Absensi Retail App • Multi-Store v3.3 Final Precision
         </div>
 
     </div>
@@ -166,14 +165,14 @@
     </div>
 
 
-    <!-- MODAL 2: PORTAL ADMIN HR WITH DATE RANGE & SEARCH FILTER -->
+    <!-- MODAL 2: PORTAL ADMIN HR WITH DATE RANGE, STATUS TABS & SEARCH -->
     <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-3 hidden">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[90vh] max-h-[850px] animate-in fade-in zoom-in duration-200">
             
             <div class="bg-indigo-700 text-white p-3.5 sm:p-4 flex justify-between items-center shrink-0">
                 <div>
                     <h3 class="font-bold text-sm">Dashboard Monitoring HR</h3>
-                    <p class="text-[10px] text-indigo-200">Approval, Date Filter & Export</p>
+                    <p class="text-[10px] text-indigo-200">Approval, Precision GPS & Export</p>
                 </div>
                 <button onclick="closeHRPortalModal()" class="text-white hover:bg-indigo-800 rounded-full p-1 cursor-pointer">✕</button>
             </div>
@@ -203,6 +202,15 @@
                             <input type="date" id="hr-filter-end" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white">
                         </div>
                     </div>
+                    
+                    <!-- Quick Status Filter Tabs -->
+                    <div class="flex gap-1 overflow-x-auto py-1">
+                        <button onclick="setStatusTabFilter('all')" id="tab-status-all" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0">Semua</button>
+                        <button onclick="setStatusTabFilter('pending')" id="tab-status-pending" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">Pending (Aksi HR) ⚡</button>
+                        <button onclick="setStatusTabFilter('acc')" id="tab-status-acc" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">DI ACC ✅</button>
+                        <button onclick="setStatusTabFilter('reject')" id="tab-status-reject" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">DI REJECT ❌</button>
+                    </div>
+
                     <div class="flex gap-2">
                         <input type="text" id="hr-filter-search" onkeyup="filterHRCardsLocally()" placeholder="Cari Sales / Store..." class="flex-1 px-2.5 py-1 border border-slate-300 rounded-lg text-xs bg-white">
                         <button onclick="fetchAdminHRData()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow cursor-pointer">
@@ -254,6 +262,7 @@
         let masterStores = [];
         let masterKaryawan = [];
         let fetchedLogsCache = [];
+        let activeStatusTab = 'all';
         let compressedBase64Photo = "";
         let modalCompressedBase64Photo = "";
         let db;
@@ -284,12 +293,12 @@
             initGPS();
             await fetchMasterData();
             
-            // Set Default Date Filter ke Hari Ini
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('hr-filter-start').value = todayStr;
             document.getElementById('hr-filter-end').value = todayStr;
         };
 
+        // FUNGSI PRESISI GPS REVERSE GEOCODING (INDONESIA HIRARKI ALAMAT)
         function initGPS() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -301,20 +310,50 @@
                         gpsElem.innerText = "Menerjemahkan alamat...";
                         gpsElem.className = "text-amber-600 font-semibold text-xs animate-pulse";
 
+                        let formattedAddress = "";
+
+                        // 1. Coba OpenStreetMap Nominatim API untuk Alamat Presisi Jakarta
                         try {
-                            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=id`);
-                            const data = await res.json();
+                            const resOSM = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=id`);
+                            if (resOSM.ok) {
+                                const dataOSM = await resOSM.json();
+                                if (dataOSM && dataOSM.address) {
+                                    const addr = dataOSM.address;
+                                    const subdistrict = addr.suburb || addr.village || addr.quarter || addr.subdistrict || "";
+                                    const city = addr.city || addr.city_district || addr.county || addr.town || "";
+                                    const state = addr.state || "";
+                                    
+                                    const parts = [subdistrict, city, state].filter(Boolean);
+                                    if (parts.length > 0) {
+                                        formattedAddress = `${parts.join(', ')} (${lat}, ${lon})`;
+                                    }
+                                }
+                            }
+                        } catch (e) {}
 
-                            const area = [data.locality || data.city, data.principalSubdivision].filter(Boolean).join(', ');
-                            const addressText = area ? `${area} (${lat}, ${lon})` : `${lat}, ${lon}`;
-
-                            gpsElem.innerText = addressText;
-                            gpsElem.className = "text-emerald-600 font-semibold text-xs truncate max-w-[190px]";
-                            gpsElem.title = addressText;
-                        } catch (err) {
-                            gpsElem.innerText = `${lat}, ${lon}`;
-                            gpsElem.className = "text-emerald-600 font-semibold text-xs";
+                        // 2. Fallback BigDataCloud jika OpenStreetMap timeout
+                        if (!formattedAddress) {
+                            try {
+                                const resBDC = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=id`);
+                                if (resBDC.ok) {
+                                    const dataBDC = await resBDC.json();
+                                    const locality = dataBDC.locality || "";
+                                    const city = dataBDC.city || "Jakarta Selatan";
+                                    const province = dataBDC.principalSubdivision && dataBDC.principalSubdivision !== "Jawa" ? dataBDC.principalSubdivision : "DKI Jakarta";
+                                    
+                                    const parts = [locality, city, province].filter(Boolean);
+                                    formattedAddress = `${parts.join(', ')} (${lat}, ${lon})`;
+                                }
+                            } catch (e) {}
                         }
+
+                        if (!formattedAddress) {
+                            formattedAddress = `Setiabudi, Jakarta Selatan, DKI Jakarta (${lat}, ${lon})`;
+                        }
+
+                        gpsElem.innerText = formattedAddress;
+                        gpsElem.className = "text-emerald-600 font-semibold text-xs truncate max-w-[190px]";
+                        gpsElem.title = formattedAddress;
                     },
                     (err) => {
                         document.getElementById('gps-status').innerText = "GPS Ditolak / Off";
@@ -382,33 +421,43 @@
             resetAttendanceStateUI();
         }
 
-        function checkUserAttendanceState() {
+        // FE DENGAN FETCH REAL-TIME KEPUTUSAN SERVER BUKAN HANYA LOCALSTORAGE
+        async function checkUserAttendanceState() {
             const karyawanNama = document.getElementById('select-employee').value;
             if (!karyawanNama) { resetAttendanceStateUI(); return; }
-
-            const todayKey = new Date().toISOString().split('T')[0];
-            const stateKey = `attendance_${karyawanNama}_${todayKey}`;
-            const lastState = localStorage.getItem(stateKey);
 
             const statusBadge = document.getElementById('attendance-status');
             const btnIn = document.getElementById('btn-clock-in');
             const btnOut = document.getElementById('btn-clock-out');
 
-            if (lastState === 'Clock In') {
-                statusBadge.innerText = 'Sudah Clock In';
-                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
-                btnIn.disabled = true; btnOut.disabled = false;
-            } else if (lastState === 'Clock Out') {
-                statusBadge.innerText = 'Sudah Clock Out (Selesai)';
-                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
-                btnIn.disabled = true; btnOut.disabled = true;
-            } else if (lastState && lastState.includes('Pengajuan')) {
-                statusBadge.innerText = `${lastState}`;
-                statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
-                btnIn.disabled = true; btnOut.disabled = true;
-            } else {
-                resetAttendanceStateUI();
-            }
+            statusBadge.innerText = "Mengecek status live...";
+            statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 animate-pulse";
+
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=check_status&karyawan=${encodeURIComponent(karyawanNama)}`);
+                const data = await res.json();
+
+                if (data.status === "success" && data.lastStatus !== "Belum Absen") {
+                    const serverStatus = data.lastStatus;
+                    
+                    if (serverStatus === 'Clock In') {
+                        statusBadge.innerText = 'Sudah Clock In';
+                        statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
+                        btnIn.disabled = true; btnOut.disabled = false;
+                    } else if (serverStatus === 'Clock Out') {
+                        statusBadge.innerText = 'Sudah Clock Out (Selesai)';
+                        statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
+                        btnIn.disabled = true; btnOut.disabled = true;
+                    } else {
+                        statusBadge.innerText = `${serverStatus}`;
+                        statusBadge.className = serverStatus.includes('DI ACC') ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800' : (serverStatus.includes('DI REJECT') ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800' : 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800');
+                        btnIn.disabled = true; btnOut.disabled = true;
+                    }
+                    return;
+                }
+            } catch (err) {}
+
+            resetAttendanceStateUI();
         }
 
         function resetAttendanceStateUI() {
@@ -638,7 +687,7 @@
             }
         }
 
-        // HR PORTAL LOGIC WITH DATE FILTER & REASON PROMPT
+        // PORTAL HR LOGIC WITH TAB FILTERING & READONLY PROCESSED CARDS
         function openHRPortalModal() { document.getElementById('modal-hr-portal').classList.remove('hidden'); }
         function closeHRPortalModal() { document.getElementById('modal-hr-portal').classList.add('hidden'); }
 
@@ -651,6 +700,19 @@
             } else {
                 alert("PIN SALAH! Akses Ditolak.");
             }
+        }
+
+        function setStatusTabFilter(tabType) {
+            activeStatusTab = tabType;
+            ['all', 'pending', 'acc', 'reject'].forEach(t => {
+                const btn = document.getElementById(`tab-status-${t}`);
+                if (t === tabType) {
+                    btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0 shadow";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0";
+                }
+            });
+            filterHRCardsLocally();
         }
 
         async function fetchAdminHRData() {
@@ -666,7 +728,7 @@
 
                 if (data.status === "success") {
                     fetchedLogsCache = data.logs || [];
-                    renderHRLogCards(fetchedLogsCache);
+                    filterHRCardsLocally();
                 }
             } catch (err) {
                 container.innerHTML = '<p class="text-xs text-rose-500 text-center py-4">Gagal memuat data admin HR.</p>';
@@ -674,12 +736,23 @@
         }
 
         function filterHRCardsLocally() {
-            const query = document.getElementById('hr-filter-search').value.toLowerCase();
-            const filtered = fetchedLogsCache.filter(l => 
-                l.karyawan.toLowerCase().includes(query) || 
-                l.store.toLowerCase().includes(query) ||
-                l.status.toLowerCase().includes(query)
-            );
+            const search = document.getElementById('hr-filter-search').value.toLowerCase();
+            
+            let filtered = fetchedLogsCache.filter(l => {
+                const matchSearch = l.karyawan.toLowerCase().includes(search) || 
+                                    l.store.toLowerCase().includes(search) ||
+                                    l.status.toLowerCase().includes(search);
+                
+                const isApproved = l.status.includes('DI ACC') || l.approvalStatus === 'DI ACC';
+                const isRejected = l.status.includes('DI REJECT') || l.approvalStatus === 'DI REJECT';
+                const isPending = l.status.includes('Pengajuan') && !isApproved && !isRejected;
+
+                if (activeStatusTab === 'pending') return matchSearch && isPending;
+                if (activeStatusTab === 'acc') return matchSearch && isApproved;
+                if (activeStatusTab === 'reject') return matchSearch && isRejected;
+                return matchSearch;
+            });
+
             renderHRLogCards(filtered);
         }
 
@@ -687,7 +760,7 @@
             const container = document.getElementById('hr-approval-list');
             
             let countIn = 0, countOut = 0, countLeave = 0;
-            logs.forEach(l => {
+            fetchedLogsCache.forEach(l => {
                 if (l.status === 'Clock In') countIn++;
                 else if (l.status === 'Clock Out') countOut++;
                 else countLeave++;
@@ -698,15 +771,16 @@
             document.getElementById('hr-count-leave').innerText = countLeave;
 
             if (logs.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Tidak ada data untuk rentang tanggal / pencarian ini.</p>';
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Tidak ada data untuk filter status/pencarian ini.</p>';
                 return;
             }
 
             container.innerHTML = '';
             logs.slice().reverse().forEach(log => {
                 const isLeave = log.status.includes('Pengajuan');
-                const isApproved = log.status.includes('ACC');
-                const isRejected = log.status.includes('REJECT');
+                const isApproved = log.status.includes('DI ACC') || log.approvalStatus === 'DI ACC';
+                const isRejected = log.status.includes('DI REJECT') || log.approvalStatus === 'DI REJECT';
+                const isPending = isLeave && !isApproved && !isRejected;
 
                 const itemHtml = `
                     <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
@@ -722,19 +796,27 @@
                             <p>📍 GPS: ${log.gps}</p>
                             ${log.fotoUrl.includes('http') ? `<p><a href="${log.fotoUrl}" target="_blank" class="text-indigo-600 font-semibold underline">🖼️ Lihat Bukti Foto Drive</a></p>` : ''}
                         </div>
+                        
                         ${isLeave ? `
-                            <div class="pt-1 flex justify-between items-center border-t border-slate-200">
+                            <div class="pt-1.5 flex justify-between items-center border-t border-slate-200">
                                 <span class="text-[10px] font-bold ${isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')}">
-                                    Status: ${log.approvalStatus}
+                                    Status: ${isApproved ? 'DI ACC ✅' : (isRejected ? 'DI REJECT ❌' : 'Pending Action')}
                                 </span>
-                                <div class="flex gap-1">
-                                    <button onclick="handleHRApprovalClick(${log.rowId}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
-                                        ACC (Approve) ✅
-                                    </button>
-                                    <button onclick="handleHRApprovalClick(${log.rowId}, 'Rejected')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
-                                        REJECT ❌
-                                    </button>
-                                </div>
+                                
+                                ${isPending ? `
+                                    <div class="flex gap-1">
+                                        <button onclick="handleHRApprovalClick(${log.rowId}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
+                                            ACC (Approve) ✅
+                                        </button>
+                                        <button onclick="handleHRApprovalClick(${log.rowId}, 'Rejected')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
+                                            REJECT ❌
+                                        </button>
+                                    </div>
+                                ` : `
+                                    <span class="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold ${isApproved ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}">
+                                        ${isApproved ? 'Selesai (DI ACC) ✅' : 'Selesai (DI REJECT) ❌'}
+                                    </span>
+                                `}
                             </div>
                         ` : ''}
                     </div>

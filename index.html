@@ -89,10 +89,10 @@
 
             <div class="grid grid-cols-2 gap-2.5 pt-1">
                 <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                    <span>Clock In</span>
+                    <span id="btn-in-text">Clock In</span>
                 </button>
                 <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                    <span>Clock Out</span>
+                    <span id="btn-out-text">Clock Out</span>
                 </button>
             </div>
 
@@ -109,7 +109,7 @@
         </div>
 
         <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v3.3 Final Precision
+            Absensi Retail App • Multi-Store v3.4 Final Release
         </div>
 
     </div>
@@ -159,20 +159,22 @@
             </div>
             <div class="p-3 bg-slate-50 border-t border-slate-200 flex gap-2 shrink-0">
                 <button onclick="closeModalPengajuan()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">Batal</button>
-                <button id="btn-submit-modal" onclick="submitModalPengajuan()" class="w-2/3 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">Kirim Pengajuan</button>
+                <button id="btn-submit-modal" onclick="submitModalPengajuan()" class="w-2/3 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">
+                    <span id="btn-modal-text">Kirim Pengajuan</span>
+                </button>
             </div>
         </div>
     </div>
 
 
-    <!-- MODAL 2: PORTAL ADMIN HR WITH DATE RANGE, STATUS TABS & SEARCH -->
+    <!-- MODAL 2: PORTAL ADMIN HR WITH BREAKDOWN STATS & LEAVE TYPE TABS -->
     <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-3 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[90vh] max-h-[850px] animate-in fade-in zoom-in duration-200">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[92vh] max-h-[880px] animate-in fade-in zoom-in duration-200">
             
             <div class="bg-indigo-700 text-white p-3.5 sm:p-4 flex justify-between items-center shrink-0">
                 <div>
                     <h3 class="font-bold text-sm">Dashboard Monitoring HR</h3>
-                    <p class="text-[10px] text-indigo-200">Approval, Precision GPS & Export</p>
+                    <p class="text-[10px] text-indigo-200">Leave Breakdown, Approval & Export</p>
                 </div>
                 <button onclick="closeHRPortalModal()" class="text-white hover:bg-indigo-800 rounded-full p-1 cursor-pointer">✕</button>
             </div>
@@ -203,10 +205,14 @@
                         </div>
                     </div>
                     
-                    <!-- Quick Status Filter Tabs -->
+                    <!-- Quick Filter Tabs per Jenis Pengajuan & Status -->
                     <div class="flex gap-1 overflow-x-auto py-1">
                         <button onclick="setStatusTabFilter('all')" id="tab-status-all" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0">Semua</button>
-                        <button onclick="setStatusTabFilter('pending')" id="tab-status-pending" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">Pending (Aksi HR) ⚡</button>
+                        <button onclick="setStatusTabFilter('pending')" id="tab-status-pending" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">Pending ⚡</button>
+                        <button onclick="setStatusTabFilter('Sakit')" id="tab-status-Sakit" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">💊 Sakit</button>
+                        <button onclick="setStatusTabFilter('Izin')" id="tab-status-Izin" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">📝 Izin</button>
+                        <button onclick="setStatusTabFilter('Cuti')" id="tab-status-Cuti" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">🌴 Cuti</button>
+                        <button onclick="setStatusTabFilter('Tugas Luar')" id="tab-status-Tugas-Luar" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">🚗 Tugas Luar</button>
                         <button onclick="setStatusTabFilter('acc')" id="tab-status-acc" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">DI ACC ✅</button>
                         <button onclick="setStatusTabFilter('reject')" id="tab-status-reject" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">DI REJECT ❌</button>
                     </div>
@@ -222,19 +228,31 @@
                     </div>
                 </div>
 
-                <!-- Stats Ringkas -->
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2 text-center">
-                        <p class="text-[9px] font-bold text-emerald-600 uppercase">Clock In</p>
-                        <p id="hr-count-in" class="text-lg font-extrabold text-emerald-800">0</p>
+                <!-- Stats Breakdown 6 Card -->
+                <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-1.5 text-center">
+                        <p class="text-[8px] font-bold text-emerald-600 uppercase">Clock In</p>
+                        <p id="hr-count-in" class="text-base font-extrabold text-emerald-800">0</p>
                     </div>
-                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-2 text-center">
-                        <p class="text-[9px] font-bold text-rose-600 uppercase">Clock Out</p>
-                        <p id="hr-count-out" class="text-lg font-extrabold text-rose-800">0</p>
+                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-1.5 text-center">
+                        <p class="text-[8px] font-bold text-rose-600 uppercase">Clock Out</p>
+                        <p id="hr-count-out" class="text-base font-extrabold text-rose-800">0</p>
                     </div>
-                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-2 text-center">
-                        <p class="text-[9px] font-bold text-amber-600 uppercase">Pengajuan</p>
-                        <p id="hr-count-leave" class="text-lg font-extrabold text-amber-800">0</p>
+                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-1.5 text-center">
+                        <p class="text-[8px] font-bold text-amber-600 uppercase">💊 Sakit</p>
+                        <p id="hr-count-sakit" class="text-base font-extrabold text-amber-800">0</p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-1.5 text-center">
+                        <p class="text-[8px] font-bold text-blue-600 uppercase">📝 Izin</p>
+                        <p id="hr-count-izin" class="text-base font-extrabold text-blue-800">0</p>
+                    </div>
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-1.5 text-center">
+                        <p class="text-[8px] font-bold text-purple-600 uppercase">🌴 Cuti</p>
+                        <p id="hr-count-cuti" class="text-base font-extrabold text-purple-800">0</p>
+                    </div>
+                    <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-1.5 text-center">
+                        <p class="text-[8px] font-bold text-cyan-600 uppercase">🚗 Tugas</p>
+                        <p id="hr-count-tugas" class="text-base font-extrabold text-cyan-800">0</p>
                     </div>
                 </div>
 
@@ -298,7 +316,6 @@
             document.getElementById('hr-filter-end').value = todayStr;
         };
 
-        // FUNGSI PRESISI GPS REVERSE GEOCODING (INDONESIA HIRARKI ALAMAT)
         function initGPS() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -312,7 +329,6 @@
 
                         let formattedAddress = "";
 
-                        // 1. Coba OpenStreetMap Nominatim API untuk Alamat Presisi Jakarta
                         try {
                             const resOSM = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=id`);
                             if (resOSM.ok) {
@@ -330,22 +346,6 @@
                                 }
                             }
                         } catch (e) {}
-
-                        // 2. Fallback BigDataCloud jika OpenStreetMap timeout
-                        if (!formattedAddress) {
-                            try {
-                                const resBDC = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=id`);
-                                if (resBDC.ok) {
-                                    const dataBDC = await resBDC.json();
-                                    const locality = dataBDC.locality || "";
-                                    const city = dataBDC.city || "Jakarta Selatan";
-                                    const province = dataBDC.principalSubdivision && dataBDC.principalSubdivision !== "Jawa" ? dataBDC.principalSubdivision : "DKI Jakarta";
-                                    
-                                    const parts = [locality, city, province].filter(Boolean);
-                                    formattedAddress = `${parts.join(', ')} (${lat}, ${lon})`;
-                                }
-                            } catch (e) {}
-                        }
 
                         if (!formattedAddress) {
                             formattedAddress = `Setiabudi, Jakarta Selatan, DKI Jakarta (${lat}, ${lon})`;
@@ -421,7 +421,6 @@
             resetAttendanceStateUI();
         }
 
-        // FE DENGAN FETCH REAL-TIME KEPUTUSAN SERVER BUKAN HANYA LOCALSTORAGE
         async function checkUserAttendanceState() {
             const karyawanNama = document.getElementById('select-employee').value;
             if (!karyawanNama) { resetAttendanceStateUI(); return; }
@@ -573,6 +572,7 @@
             };
         }
 
+        // DOUBLE-CLICK PROTECTION INCLUDED
         async function submitAttendance(type) {
             const storeSelect = document.getElementById('select-store');
             const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
@@ -584,12 +584,17 @@
                 return;
             }
 
+            const btnIn = document.getElementById('btn-clock-in');
+            const btnOut = document.getElementById('btn-clock-out');
+            btnIn.disabled = true; btnOut.disabled = true;
+
             const payload = {
                 timestamp: new Date().toISOString(),
                 storeNama: storeNama,
                 karyawanNama: karyawanNama,
                 shiftNama: "-",
                 status: type,
+                jenisPengajuan: "-",
                 catatan: "-",
                 gps: gps,
                 fotoBase64: compressedBase64Photo
@@ -605,7 +610,6 @@
             }
 
             try {
-                alert(`Mengirim data ${type}... Mohon tunggu.`);
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -649,6 +653,10 @@
                 return;
             }
 
+            const btnSubmit = document.getElementById('btn-submit-modal');
+            btnSubmit.disabled = true;
+            document.getElementById('btn-modal-text').innerText = "Mengirim...";
+
             const statusFormatted = `Pengajuan: ${tipePengajuan}`;
             const payload = {
                 timestamp: new Date().toISOString(),
@@ -656,6 +664,7 @@
                 karyawanNama: karyawanNama,
                 shiftNama: "-",
                 status: statusFormatted,
+                jenisPengajuan: tipePengajuan,
                 catatan: alasanInput,
                 gps: gps,
                 fotoBase64: modalCompressedBase64Photo
@@ -669,6 +678,8 @@
             if (!navigator.onLine) {
                 saveToOfflineQueue(payload);
                 checkUserAttendanceState();
+                btnSubmit.disabled = false;
+                document.getElementById('btn-modal-text').innerText = "Kirim Pengajuan";
                 return;
             }
 
@@ -679,15 +690,17 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                alert(`Berhasil Mengirim ${statusFormatted}!`);
+                alert(`Berhasil Mengirim Pengajuan ${tipePengajuan}!`);
                 checkUserAttendanceState();
             } catch (err) {
                 saveToOfflineQueue(payload);
                 checkUserAttendanceState();
             }
+            btnSubmit.disabled = false;
+            document.getElementById('btn-modal-text').innerText = "Kirim Pengajuan";
         }
 
-        // PORTAL HR LOGIC WITH TAB FILTERING & READONLY PROCESSED CARDS
+        // PORTAL HR LOGIC WITH LEAVE TYPE STATS & TABS
         function openHRPortalModal() { document.getElementById('modal-hr-portal').classList.remove('hidden'); }
         function closeHRPortalModal() { document.getElementById('modal-hr-portal').classList.add('hidden'); }
 
@@ -704,12 +717,14 @@
 
         function setStatusTabFilter(tabType) {
             activeStatusTab = tabType;
-            ['all', 'pending', 'acc', 'reject'].forEach(t => {
+            ['all', 'pending', 'Sakit', 'Izin', 'Cuti', 'Tugas-Luar', 'acc', 'reject'].forEach(t => {
                 const btn = document.getElementById(`tab-status-${t}`);
-                if (t === tabType) {
-                    btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0 shadow";
-                } else {
-                    btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0";
+                if (btn) {
+                    if (t === tabType || (t === 'Tugas-Luar' && tabType === 'Tugas Luar')) {
+                        btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0 shadow";
+                    } else {
+                        btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0";
+                    }
                 }
             });
             filterHRCardsLocally();
@@ -741,7 +756,8 @@
             let filtered = fetchedLogsCache.filter(l => {
                 const matchSearch = l.karyawan.toLowerCase().includes(search) || 
                                     l.store.toLowerCase().includes(search) ||
-                                    l.status.toLowerCase().includes(search);
+                                    l.status.toLowerCase().includes(search) ||
+                                    l.jenisPengajuan.toLowerCase().includes(search);
                 
                 const isApproved = l.status.includes('DI ACC') || l.approvalStatus === 'DI ACC';
                 const isRejected = l.status.includes('DI REJECT') || l.approvalStatus === 'DI REJECT';
@@ -750,6 +766,9 @@
                 if (activeStatusTab === 'pending') return matchSearch && isPending;
                 if (activeStatusTab === 'acc') return matchSearch && isApproved;
                 if (activeStatusTab === 'reject') return matchSearch && isRejected;
+                if (activeStatusTab === 'Sakit' || activeStatusTab === 'Izin' || activeStatusTab === 'Cuti' || activeStatusTab === 'Tugas Luar') {
+                    return matchSearch && l.jenisPengajuan === activeStatusTab;
+                }
                 return matchSearch;
             });
 
@@ -759,19 +778,27 @@
         function renderHRLogCards(logs) {
             const container = document.getElementById('hr-approval-list');
             
-            let countIn = 0, countOut = 0, countLeave = 0;
+            let countIn = 0, countOut = 0, countSakit = 0, countIzin = 0, countCuti = 0, countTugas = 0;
             fetchedLogsCache.forEach(l => {
                 if (l.status === 'Clock In') countIn++;
                 else if (l.status === 'Clock Out') countOut++;
-                else countLeave++;
+                else {
+                    if (l.jenisPengajuan === 'Sakit' || l.status.includes('Sakit')) countSakit++;
+                    else if (l.jenisPengajuan === 'Izin' || l.status.includes('Izin')) countIzin++;
+                    else if (l.jenisPengajuan === 'Cuti' || l.status.includes('Cuti')) countCuti++;
+                    else if (l.jenisPengajuan === 'Tugas Luar' || l.status.includes('Tugas')) countTugas++;
+                }
             });
 
             document.getElementById('hr-count-in').innerText = countIn;
             document.getElementById('hr-count-out').innerText = countOut;
-            document.getElementById('hr-count-leave').innerText = countLeave;
+            document.getElementById('hr-count-sakit').innerText = countSakit;
+            document.getElementById('hr-count-izin').innerText = countIzin;
+            document.getElementById('hr-count-cuti').innerText = countCuti;
+            document.getElementById('hr-count-tugas').innerText = countTugas;
 
             if (logs.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Tidak ada data untuk filter status/pencarian ini.</p>';
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Tidak ada data untuk filter / pencarian ini.</p>';
                 return;
             }
 
@@ -790,6 +817,7 @@
                         </div>
                         <div class="text-slate-500 text-[11px] space-y-0.5">
                             <p>🏬 Store: ${log.store}</p>
+                            ${log.jenisPengajuan !== '-' ? `<p>📌 Kategori: <strong class="text-indigo-700">${log.jenisPengajuan}</strong></p>` : ''}
                             <p>📅 Waktu: ${new Date(log.timestamp).toLocaleString('id-ID')}</p>
                             ${log.catatan !== '-' ? `<p class="italic text-slate-700">📝 Note: "${log.catatan}"</p>` : ''}
                             ${log.alasanReject !== '-' ? `<p class="text-rose-600 font-medium">⚠️ Alasan Reject: "${log.alasanReject}"</p>` : ''}
@@ -862,7 +890,7 @@
             }
 
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Timestamp,Nama Store,Nama Karyawan,Status Absen,Catatan,GPS,Approval HR,Alasan Reject\n";
+            csvContent += "Timestamp,Nama Store,Nama Karyawan,Status Absen,Jenis Pengajuan,Catatan,GPS,Approval HR,Alasan Reject\n";
 
             fetchedLogsCache.forEach(l => {
                 const row = [
@@ -870,6 +898,7 @@
                     `"${l.store}"`,
                     `"${l.karyawan}"`,
                     `"${l.status}"`,
+                    `"${l.jenisPengajuan}"`,
                     `"${l.catatan}"`,
                     `"${l.gps}"`,
                     `"${l.approvalStatus}"`,

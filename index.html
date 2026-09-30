@@ -3,1071 +3,722 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Portal Absensi Store</title>
-    
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Absensi Store">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/712/712013.png">
-
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style> body { font-family: 'Inter', sans-serif; } </style>
+    <title>Portal Absensi Store v4.3</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .glass-header { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        video, canvas { border-radius: 0.75rem; object-fit: cover; }
+    </style>
 </head>
-<body class="bg-slate-100 flex justify-center items-center min-h-screen p-2 sm:p-4 select-none relative">
+<body class="min-h-screen flex flex-col text-gray-800 pb-12">
 
-    <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden flex flex-col h-[94vh] max-h-[900px]">
-        
-        <!-- Header -->
-        <div class="bg-indigo-600 text-white p-4 sm:p-5 flex justify-between items-center shrink-0 shadow-md">
-            <div>
-                <h1 class="text-base sm:text-lg font-bold tracking-tight">Portal Absensi Store</h1>
-                <p class="text-[11px] text-indigo-200" id="current-date">Memuat tanggal...</p>
+    <!-- HEADER / NAVIGATION BAR -->
+    <header class="sticky top-0 z-30 glass-header border-b border-gray-200 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                    <i class="fa-solid me-0.5 fa-user-check"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-gray-900 text-lg leading-tight">Portal Absensi Store</h1>
+                    <p class="text-xs text-indigo-600 font-medium">v4.3 Production Ready</p>
+                </div>
             </div>
-            <button onclick="openHRPortalModal()" class="bg-indigo-500/90 hover:bg-indigo-400 active:scale-95 px-3 py-1 rounded-full text-[11px] font-semibold border border-indigo-300 flex items-center gap-1 cursor-pointer transition">
-                <span>🔑 Portal HR</span>
-            </button>
-        </div>
-
-        <!-- Offline Banner -->
-        <div id="offline-banner" class="hidden bg-amber-500 text-white px-3 py-1.5 text-[11px] font-bold text-center flex justify-between items-center shrink-0">
-            <span id="offline-banner-text">🟠 Mode Offline: Data tersimpan di HP</span>
-            <button onclick="syncOfflineQueue()" class="underline text-[10px] bg-amber-600 px-2 py-0.5 rounded cursor-pointer">Sync Sekarang</button>
-        </div>
-
-        <!-- Main Content -->
-        <div class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-3.5">
             
-            <div class="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-3 text-center shadow-sm">
-                <p class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Waktu Real-time</p>
-                <h2 class="text-3xl font-extrabold text-indigo-900 mt-0.5 tracking-tight" id="live-clock">00:00:00</h2>
+            <!-- TAB SWITCHER -->
+            <div class="flex bg-gray-100 p-1 rounded-xl text-xs font-semibold">
+                <button id="tabSalesBtn" onclick="switchTab('sales')" class="px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm">
+                    <i class="fa-solid fa-store mr-1"></i> Presensi Toko
+                </button>
+                <button id="tabHrBtn" onclick="switchTab('hr')" class="px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900">
+                    <i class="fa-solid fa-user-shield mr-1"></i> Portal HR
+                </button>
             </div>
+        </div>
+    </header>
 
-            <!-- Store Dropdown -->
-            <div class="space-y-1">
-                <div class="flex justify-between items-center">
-                    <label for="select-store" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Cabang / Store</label>
-                    <span id="store-lock-badge" class="hidden text-[10px] font-bold text-slate-400">🔒 Terkunci</span>
-                </div>
-                <select id="select-store" onchange="onStoreChange()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-medium text-slate-800 transition">
-                    <option value="">-- Memuat Daftar Store... --</option>
-                </select>
-            </div>
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-4xl mx-auto px-4 mt-6 flex-grow w-full">
 
-            <!-- Employee Dropdown + Reset Button -->
-            <div class="space-y-1">
-                <div class="flex justify-between items-center">
-                    <label for="select-employee" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Nama Sales / Karyawan</label>
-                    <button id="btn-reset-user" onclick="resetUserSelection()" class="hidden text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer">
-                        🔄 Ganti Sales
-                    </button>
+        <!-- ================================================================= -->
+        <!-- TAB 1: KIOS PRESENSI SALES / STORE -->
+        <!-- ================================================================= -->
+        <section id="tabSalesSection" class="space-y-6">
+            
+            <!-- CARD UTAMA PRESENSI -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-6 space-y-5">
+                
+                <div class="border-b border-gray-100 pb-3 flex justify-between items-center">
+                    <h2 class="font-bold text-gray-800 text-base flex items-center">
+                        <i class="fa-solid fa-clipboard-user text-indigo-500 mr-2"></i> Form Presensi Harian
+                    </h2>
+                    <span id="badgeLiveStatus" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                        Memuat Status...
+                    </span>
                 </div>
-                <select id="select-employee" disabled onchange="checkUserAttendanceState()" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition">
-                    <option value="">-- Pilih Store Terlebih Dahulu --</option>
-                </select>
-            </div>
 
-            <!-- Status Box -->
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm space-y-1.5">
-                <div class="flex justify-between items-center text-xs">
-                    <span class="text-slate-500 font-medium">Status Absen Hari Ini:</span>
-                    <span id="attendance-status" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">Belum Absen</span>
-                </div>
-                <div class="flex justify-between items-center text-xs">
-                    <span class="text-slate-500 font-medium">Lokasi GPS:</span>
-                    <span id="gps-status" class="text-slate-700 font-semibold truncate max-w-[190px]">Mendeteksi lokasi...</span>
-                </div>
-            </div>
-
-            <!-- Foto Selfie -->
-            <div class="space-y-1">
-                <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
-                    <span>Foto Selfie Presensi Harian</span>
-                    <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB FOTO</span>
-                </label>
-                <div class="border-2 border-dashed border-slate-300 rounded-xl p-2.5 text-center bg-slate-50 relative hover:bg-slate-100 transition">
-                    <input type="file" accept="image/*" capture="user" id="camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewAndCompressImage(event)">
-                    <div id="camera-placeholder" class="space-y-1 py-1">
-                        <svg class="w-6 h-6 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                        <p class="text-xs text-slate-500 font-medium">Tap untuk Ambil Foto Selfie</p>
+                <!-- SELECT STORE & KARYAWAN -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Cabang Store <span class="text-red-500">*</span></label>
+                        <select id="selectStore" onchange="onStoreChange()" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Pilih Cabang Store --</option>
+                        </select>
                     </div>
-                    <img id="image-preview" class="hidden w-full h-28 object-cover rounded-lg mx-auto" alt="Preview Foto">
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nama Karyawan / Sales <span class="text-red-500">*</span></label>
+                        <select id="selectKaryawan" onchange="onKaryawanChange()" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">-- Pilih Nama Sales --</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Tombol Action -->
-            <div class="grid grid-cols-2 gap-2.5 pt-1">
-                <button id="btn-clock-in" onclick="submitAttendance('Clock In')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                    <span id="btn-in-text">Clock In</span>
-                </button>
-                <button id="btn-clock-out" onclick="submitAttendance('Clock Out')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold py-3 px-3 rounded-xl shadow-md transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                    <span id="btn-out-text">Clock Out</span>
-                </button>
-            </div>
-
-            <div class="relative flex py-1 items-center">
-                <div class="flex-grow border-t border-slate-200"></div>
-                <span class="flex-shrink mx-2 text-[10px] text-slate-400 font-semibold uppercase">Atau Kendala Tidak Masuk</span>
-                <div class="flex-grow border-t border-slate-200"></div>
-            </div>
-
-            <button id="btn-open-pengajuan" onclick="openModalPengajuan()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md transition text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                <span>Form Pengajuan (Sakit / Izin / Cuti)</span>
-            </button>
-
-        </div>
-
-        <div class="bg-slate-50 border-t border-slate-200 p-2 text-center text-[10px] text-slate-400 shrink-0 font-medium">
-            Absensi Retail App • Multi-Store v4.3 Production Certified
-        </div>
-
-    </div>
-
-
-    <!-- MODAL 1: FORM PENGAJUKAN SAKIT/IZIN/CUTI -->
-    <div id="modal-pengajuan" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-            <div class="bg-amber-500 text-white p-4 flex justify-between items-center shrink-0">
-                <h3 class="font-bold text-sm">Form Pengajuan Ketidakhadiran</h3>
-                <button onclick="closeModalPengajuan()" class="text-white hover:bg-amber-600 rounded-full p-1 cursor-pointer">✕</button>
-            </div>
-            <div class="p-4 space-y-3.5 overflow-y-auto flex-1">
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-900">
-                    <p class="font-semibold" id="modal-info-sales">Sales: -</p>
-                    <p class="text-[11px] text-amber-700" id="modal-info-store">Store: -</p>
+                <!-- PILIH MODE ABSEN / PENGAJUAN -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-2">Tipe Presensi / Pengajuan <span class="text-red-500">*</span></label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" id="btnClockIn" onclick="setAbsenMode('Clock In')" class="py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 hover:bg-indigo-100 transition">
+                            <i class="fa-solid fa-right-to-bracket text-base"></i>
+                            <span>Clock In</span>
+                        </button>
+                        <button type="button" id="btnClockOut" onclick="setAbsenMode('Clock Out')" class="py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-semibold text-xs flex flex-col items-center justify-center space-y-1 hover:bg-gray-100 transition">
+                            <i class="fa-solid fa-right-from-bracket text-base"></i>
+                            <span>Clock Out</span>
+                        </button>
+                        <button type="button" id="btnPengajuan" onclick="setAbsenMode('Pengajuan')" class="py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-semibold text-xs flex flex-col items-center justify-center space-y-1 hover:bg-gray-100 transition">
+                            <i class="fa-solid fa-file-signature text-base"></i>
+                            <span>Pengajuan</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Jenis Pengajuan</label>
-                    <select id="modal-select-tipe" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold bg-slate-50 text-slate-800">
-                        <option value="Sakit">Sakit (Wajib Lampirkan SKD)</option>
-                        <option value="Izin">Izin Keperluan Penting</option>
-                        <option value="Cuti">Cuti Tahunan</option>
-                        <option value="Tugas Luar">Tugas Luar Store</option>
+
+                <!-- DYNAMIC FORM SECTIONS -->
+                <!-- SHIFT SELECTOR (TAMPIL JIKA CLOCK IN/OUT) -->
+                <div id="sectionShift" class="space-y-1.5">
+                    <label class="block text-xs font-semibold text-gray-600">Jam Shift Kerja</label>
+                    <select id="selectShift" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="Shift Pagi (10:00 - 19:00)">Shift Pagi (10:00 - 19:00)</option>
+                        <option value="Shift Middle (12:00 - 21:00)">Shift Middle (12:00 - 21:00)</option>
+                        <option value="Shift Closing (13:00 - 22:00)">Shift Closing (13:00 - 22:00)</option>
+                        <option value="Shift Batavia Pagi (08:00 - 17:00)">Shift Batavia Pagi (08:00 - 17:00)</option>
+                        <option value="Shift Batavia Malam (15:00 - 24:00)">Shift Batavia Malam (15:00 - 24:00)</option>
                     </select>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
-                        <span>Detail Alasan</span>
-                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB</span>
-                    </label>
-                    <textarea id="modal-input-alasan" rows="3" placeholder="Jelaskan alasan pengajuan secara detail..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800"></textarea>
-                </div>
-                <div class="space-y-1">
-                    <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex justify-between">
-                        <span>Foto Surat Dokter / Bukti</span>
-                        <span class="text-rose-500 text-[10px] font-extrabold">*WAJIB</span>
-                    </label>
-                    <div class="border-2 border-dashed border-amber-300 rounded-xl p-2.5 text-center bg-amber-50/50 relative hover:bg-amber-100/50 transition">
-                        <input type="file" accept="image/*" capture="user" id="modal-camera-input" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="previewAndCompressModalImage(event)">
-                        <div id="modal-camera-placeholder" class="space-y-1 py-1">
-                            <p class="text-xs text-amber-800 font-medium">Tap untuk Ambil Foto Bukti</p>
-                        </div>
-                        <img id="modal-image-preview" class="hidden w-full h-28 object-cover rounded-lg mx-auto" alt="Preview Bukti">
+
+                <!-- PENGAJUAN OPTIONS (TAMPIL JIKA PENGAJUAN) -->
+                <div id="sectionPengajuan" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Kategori Pengajuan <span class="text-red-500">*</span></label>
+                        <select id="selectJenisPengajuan" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Sakit">Sakit (Lampirkan Surat Dokter)</option>
+                            <option value="Izin">Izin (Sebab Alasan Penting)</option>
+                            <option value="Cuti">Cuti Tahunan</option>
+                            <option value="Tugas Luar">Tugas Luar / Event</option>
+                        </select>
                     </div>
                 </div>
-            </div>
-            <div class="p-3 bg-slate-50 border-t border-slate-200 flex gap-2 shrink-0">
-                <button onclick="closeModalPengajuan()" class="w-1/3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">Batal</button>
-                <button id="btn-submit-modal" onclick="submitModalPengajuan()" class="w-2/3 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">
-                    <span id="btn-modal-text">Kirim Pengajuan</span>
-                </button>
-            </div>
-        </div>
-    </div>
 
-
-    <!-- MODAL 2: PORTAL ADMIN HR -->
-    <div id="modal-hr-portal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-3 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[92vh] max-h-[880px] animate-in fade-in zoom-in duration-200">
-            
-            <div class="bg-indigo-700 text-white p-3.5 sm:p-4 flex justify-between items-center shrink-0">
+                <!-- CATATAN / ALASAN TEXTAREA (MAKS 250 CHAR) -->
                 <div>
-                    <h3 class="font-bold text-sm">Dashboard Monitoring HR</h3>
-                    <p class="text-[10px] text-indigo-200">Leave Breakdown, Secure PIN & Export</p>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-gray-600">Catatan / Alasan / Keterangan</label>
+                        <span id="charCounter" class="text-[10px] text-gray-400">0/250</span>
+                    </div>
+                    <textarea id="textCatatan" maxlength="250" oninput="updateCharCount()" rows="2" placeholder="Tuliskan keterangan tambahan jika ada..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                 </div>
-                <button onclick="closeHRPortalModal()" class="text-white hover:bg-indigo-800 rounded-full p-1 cursor-pointer">✕</button>
-            </div>
 
-            <!-- PIN Screen (Server Verified) -->
-            <div id="hr-pin-screen" class="p-6 flex flex-col justify-center items-center flex-1 space-y-4">
-                <div class="text-center space-y-1">
-                    <h4 class="font-bold text-slate-800 text-sm">Akses Terkunci Admin HR</h4>
-                    <p class="text-xs text-slate-500">Masukkan PIN Keamanan untuk membuka dashboard</p>
+                <!-- GEOLOKASI GPS STATUS -->
+                <div class="flex items-center justify-between bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-xs text-blue-800">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-location-dot text-indigo-600 text-sm"></i>
+                        <span id="gpsLocationText" class="font-medium">Mendeteksi Lokasi GPS...</span>
+                    </div>
+                    <button type="button" onclick="initGeolocation()" class="text-indigo-600 hover:text-indigo-800 font-bold underline">Refresh GPS</button>
                 </div>
-                <input type="password" id="hr-pin-input" maxlength="6" placeholder="Masukkan PIN" class="w-36 text-center text-lg tracking-widest font-bold px-3 py-2 border-2 border-indigo-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-slate-50">
-                <button id="btn-verify-pin" onclick="verifyHRPin()" class="w-36 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-xs shadow-md">
-                    <span id="btn-pin-text">Buka Portal</span>
+
+                <!-- CAMERA SELFIE / PROOF CAPTURE SECTION -->
+                <div class="space-y-3">
+                    <label class="block text-xs font-semibold text-gray-600">
+                        Lampiran Foto Selfie / Surat Bukti <span class="text-red-500">*</span>
+                    </label>
+                    
+                    <div class="relative bg-black/90 rounded-2xl overflow-hidden min-h-[220px] flex items-center justify-center">
+                        <video id="webcam" autoplay playsinline class="w-full h-56 object-cover"></video>
+                        <canvas id="photoCanvas" class="hidden w-full h-56 object-cover"></canvas>
+                        
+                        <!-- CAMERA OVERLAY BUTTONS -->
+                        <div id="cameraControls" class="absolute bottom-3 left-0 right-0 flex justify-center items-center space-x-3 px-4">
+                            <button type="button" id="btnCapture" onclick="takeSnapshot()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-lg flex items-center space-x-1.5 transition">
+                                <i class="fa-solid fa-camera"></i>
+                                <span>Ambil Foto</span>
+                            </button>
+                            <button type="button" id="btnRetake" onclick="resetCamera()" class="hidden bg-gray-800/80 hover:bg-gray-900 text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-lg flex items-center space-x-1.5 transition">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>Foto Ulang</span>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-gray-400 italic text-center">* Foto dikompresi otomatis di bawah 150 KB sebelum dikirim.</p>
+                </div>
+
+                <!-- SUBMIT BUTTON -->
+                <button type="button" id="btnSubmitPresensi" onclick="submitPresensi()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-indigo-100 flex justify-center items-center space-x-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span id="btnSubmitText">KIRIM PRESENSI SEKARANG</span>
+                </button>
+
+            </div>
+        </section>
+
+
+        <!-- ================================================================= -->
+        <!-- TAB 2: PORTAL HR ADMIN (REKAP & APPROVAL) -->
+        <!-- ================================================================= -->
+        <section id="tabHrSection" class="hidden space-y-6">
+            
+            <!-- AUTH MODAL CARD (JIKA BELUM LOGIN PIN HR) -->
+            <div id="hrAuthCard" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-md mx-auto space-y-4 text-center">
+                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-900 text-lg">Akses Portal HR Operations</h3>
+                    <p class="text-xs text-gray-500 mt-1">Masukkan 4-digit PIN Admin HR untuk melanjutkan.</p>
+                </div>
+                <div>
+                    <input type="password" id="inputHrPin" maxlength="6" placeholder="Masukkan PIN Admin" class="w-full text-center text-lg font-bold tracking-widest bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <button type="button" onclick="verifyHrPin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition text-sm">
+                    Masuk Portal HR
                 </button>
             </div>
 
-            <!-- Dashboard Content Screen -->
-            <div id="hr-dashboard-screen" class="hidden flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
+            <!-- DASHBOARD HR CONTENT (TAMPIL SETELAH VERIFIKASI) -->
+            <div id="hrDashboardContent" class="hidden space-y-5">
                 
-                <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 space-y-2">
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-600 uppercase">Dari Tanggal</label>
-                            <input type="date" id="hr-filter-start" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-600 uppercase">Sampai Tanggal</label>
-                            <input type="date" id="hr-filter-end" class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white">
-                        </div>
+                <!-- FILTER DATE & SEARCH -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal Mulai</label>
+                        <input type="date" id="filterStartDate" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
-                    
-                    <div class="flex gap-1 overflow-x-auto py-1">
-                        <button onclick="setStatusTabFilter('all')" id="tab-status-all" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0">Semua</button>
-                        <button onclick="setStatusTabFilter('pending')" id="tab-status-pending" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">Pending ⚡</button>
-                        <button onclick="setStatusTabFilter('Sakit')" id="tab-status-Sakit" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">💊 Sakit</button>
-                        <button onclick="setStatusTabFilter('Izin')" id="tab-status-Izin" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">📝 Izin</button>
-                        <button onclick="setStatusTabFilter('Cuti')" id="tab-status-Cuti" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">🌴 Cuti</button>
-                        <button onclick="setStatusTabFilter('Tugas Luar')" id="tab-status-Tugas-Luar" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">🚗 Tugas Luar</button>
-                        <button onclick="setStatusTabFilter('acc')" id="tab-status-acc" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">DI ACC ✅</button>
-                        <button onclick="setStatusTabFilter('reject')" id="tab-status-reject" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0">DI REJECT ❌</button>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal Selesai</label>
+                        <input type="date" id="filterEndDate" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
-
-                    <div class="flex gap-2">
-                        <input type="text" id="hr-filter-search" onkeyup="filterHRCardsLocally()" placeholder="Cari Sales / Store / Alasan..." class="flex-1 px-2.5 py-1 border border-slate-300 rounded-lg text-xs bg-white">
-                        <button onclick="fetchAdminHRData()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-lg text-xs shadow cursor-pointer">Cari 🔍</button>
-                        <button onclick="exportHRDataToCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer">📥 CSV</button>
-                        <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow cursor-pointer">🖨️ PDF</button>
+                    <div>
+                        <button type="button" onclick="loadHrLogs()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5 shadow">
+                            <i class="fa-solid fa-filter"></i>
+                            <span>Terapkan Filter Data</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-1.5 text-center">
-                        <p class="text-[8px] font-bold text-emerald-600 uppercase">Clock In</p>
-                        <p id="hr-count-in" class="text-base font-extrabold text-emerald-800">0</p>
+                <!-- TABLE LOG ABSENSI -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-800 text-sm flex items-center">
+                            <i class="fa-solid fa-list-check text-indigo-500 mr-2"></i> Rekapitulasi & Verification Hub HR
+                        </h3>
+                        <span id="logCountBadge" class="text-xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-lg">0 Data</span>
                     </div>
-                    <div class="bg-rose-50 border border-rose-200 rounded-xl p-1.5 text-center">
-                        <p class="text-[8px] font-bold text-rose-600 uppercase">Clock Out</p>
-                        <p id="hr-count-out" class="text-base font-extrabold text-rose-800">0</p>
-                    </div>
-                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-1.5 text-center">
-                        <p class="text-[8px] font-bold text-amber-600 uppercase">💊 Sakit</p>
-                        <p id="hr-count-sakit" class="text-base font-extrabold text-amber-800">0</p>
-                    </div>
-                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-1.5 text-center">
-                        <p class="text-[8px] font-bold text-blue-600 uppercase">📝 Izin</p>
-                        <p id="hr-count-izin" class="text-base font-extrabold text-blue-800">0</p>
-                    </div>
-                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-1.5 text-center">
-                        <p class="text-[8px] font-bold text-purple-600 uppercase">🌴 Cuti</p>
-                        <p id="hr-count-cuti" class="text-base font-extrabold text-purple-800">0</p>
-                    </div>
-                    <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-1.5 text-center">
-                        <p class="text-[8px] font-bold text-cyan-600 uppercase">🚗 Tugas</p>
-                        <p id="hr-count-tugas" class="text-base font-extrabold text-cyan-800">0</p>
-                    </div>
-                </div>
 
-                <div class="space-y-2">
-                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between items-center">
-                        <span>Aktivitas Presensi & Pengajuan</span>
-                        <button onclick="fetchAdminHRData()" class="text-[10px] text-indigo-600 hover:underline">Refresh 🔄</button>
-                    </h4>
-                    <div id="hr-approval-list" class="space-y-2">
-                        <p class="text-xs text-slate-400 text-center py-4">Memuat data live...</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-gray-600">
+                            <thead class="bg-gray-50 text-gray-700 font-semibold border-b border-gray-100">
+                                <tr>
+                                    <th class="p-3">Waktu</th>
+                                    <th class="p-3">Karyawan / Store</th>
+                                    <th class="p-3">Status / Shift</th>
+                                    <th class="p-3">Bukti Foto</th>
+                                    <th class="p-3">Approval Status</th>
+                                    <th class="p-3 text-center">Tindakan HR</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableHrLogsBody" class="divide-y divide-gray-100">
+                                <tr>
+                                    <td colspan="6" class="text-center py-8 text-gray-400">Silakan klik tombol filter untuk memuat data absensi.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
             </div>
 
+        </section>
+
+    </main>
+
+    <!-- LIGHTBOX MODAL UNTUK PREVIEW FOTO BUKTI -->
+    <div id="lightboxModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="relative max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl">
+            <div class="p-3 bg-gray-900 text-white flex justify-between items-center">
+                <span id="lightboxTitle" class="font-semibold text-xs">Preview Bukti Foto</span>
+                <button type="button" onclick="closeLightbox()" class="text-gray-400 hover:text-white px-2 text-lg">&times;</button>
+            </div>
+            <div class="p-2 bg-black flex justify-center items-center min-h-[250px]">
+                <img id="lightboxImg" src="" alt="Bukti Foto" class="max-h-[70vh] object-contain rounded-lg">
+            </div>
         </div>
     </div>
 
-
-    <!-- MODAL 3: IN-APP PHOTO LIGHTBOX -->
-    <div id="modal-lightbox" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden" onclick="closeLightbox()">
-        <div class="relative max-w-lg w-full bg-black rounded-2xl overflow-hidden p-2 shadow-2xl" onclick="event.stopPropagation()">
-            <button onclick="closeLightbox()" class="absolute top-3 right-3 bg-slate-800 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 cursor-pointer">✕</button>
-            <img id="lightbox-img" src="" class="w-full h-auto max-h-[80vh] object-contain rounded-xl mx-auto" alt="Preview Foto">
+    <!-- REJECT REASON MODAL -->
+    <div id="rejectModal" class="fixed inset-0 z-50 bg-black/50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
+            <h4 class="font-bold text-gray-900 text-sm">Alasan Penolakan Pengajuan</h4>
+            <textarea id="inputRejectReason" rows="3" placeholder="Tuliskan alasan penolakan bagi Sales..." class="w-full border border-gray-200 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
+            <div class="flex space-x-2 justify-end">
+                <button type="button" onclick="closeRejectModal()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600">Batal</button>
+                <button type="button" onclick="confirmRejectAction()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white">Konfirmasi Tolak</button>
+            </div>
         </div>
     </div>
 
-
+    <!-- ================================================================= -->
+    <!-- JAVASCRIPT LOGIC ENGINE -->
+    <!-- ================================================================= -->
     <script>
+        // CONFIGURATION: APPS SCRIPT / SUPABASE PROXY ENDPOINT
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysnYJNbtypJLXnG9OzVJF7Q9X1uMl9kjqzR_ukg-Jnq4GKGNHnbOAQbqrPd3FEvfu0/exec';
 
+        // STATE VARIABLES
+        let currentMode = 'Clock In';
         let masterStores = [];
         let masterKaryawan = [];
-        let fetchedLogsCache = [];
-        let activeStatusTab = 'all';
-        let compressedBase64Photo = "";
-        let modalCompressedBase64Photo = "";
-        let db;
+        let capturedBase64 = '';
+        let currentGpsCoords = '-';
+        let videoStream = null;
+        let selectedRowForReject = null;
 
-        const request = indexedDB.open("AbsensiOfflineDB", 1);
-        request.onupgradeneeded = function(e) {
-            db = e.target.result;
-            if (!db.objectStoreNames.contains("offline_queue")) {
-                db.createObjectStore("offline_queue", { keyPath: "id", autoIncrement: true });
-            }
-        };
-        request.onsuccess = function(e) {
-            db = e.target.result;
-            updateOfflineBadge();
-            if (navigator.onLine) syncOfflineQueue();
-        };
+        // INITIALIZATION ON LOAD
+        window.addEventListener('DOMContentLoaded', () => {
+            initDates();
+            fetchMasterData();
+            initGeolocation();
+            startWebcam();
+        });
 
-        window.addEventListener('online', syncOfflineQueue);
-        window.addEventListener('offline', updateOfflineBadge);
+        function initDates() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('filterStartDate').value = today;
+            document.getElementById('filterEndDate').value = today;
+        }
 
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('live-clock').innerText = now.toLocaleTimeString('id-ID');
-            document.getElementById('current-date').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        }, 1000);
+        // SWITCH TAB (SALES vs HR)
+        function switchTab(tab) {
+            const salesSec = document.getElementById('tabSalesSection');
+            const hrSec = document.getElementById('tabHrSection');
+            const salesBtn = document.getElementById('tabSalesBtn');
+            const hrBtn = document.getElementById('tabHrBtn');
 
-        window.onload = async function() {
-            initGPS();
-            await fetchMasterData();
-            
-            const localTodayStr = new Date().toLocaleDateString('en-CA');
-            document.getElementById('hr-filter-start').value = localTodayStr;
-            document.getElementById('hr-filter-end').value = localTodayStr;
-        };
-
-        function initGPS() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    async (pos) => {
-                        const lat = pos.coords.latitude.toFixed(5);
-                        const lon = pos.coords.longitude.toFixed(5);
-                        
-                        const gpsElem = document.getElementById('gps-status');
-                        gpsElem.innerText = "Menerjemahkan alamat...";
-                        gpsElem.className = "text-amber-600 font-semibold text-xs animate-pulse";
-
-                        let formattedAddress = "";
-
-                        try {
-                            const resOSM = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&accept-language=id`);
-                            if (resOSM.ok) {
-                                const dataOSM = await resOSM.json();
-                                if (dataOSM && dataOSM.address) {
-                                    const addr = dataOSM.address;
-                                    const subdistrict = addr.suburb || addr.village || addr.quarter || addr.subdistrict || "";
-                                    const city = addr.city || addr.city_district || addr.county || addr.town || "";
-                                    const state = addr.state || "";
-                                    
-                                    const parts = [subdistrict, city, state].filter(Boolean);
-                                    if (parts.length > 0) {
-                                        formattedAddress = `${parts.join(', ')} (${lat}, ${lon})`;
-                                    }
-                                }
-                            }
-                        } catch (e) {}
-
-                        if (!formattedAddress) {
-                            formattedAddress = `Setiabudi, Jakarta Selatan, DKI Jakarta (${lat}, ${lon})`;
-                        }
-
-                        gpsElem.innerText = formattedAddress;
-                        gpsElem.className = "text-emerald-600 font-semibold text-xs truncate max-w-[190px]";
-                        gpsElem.title = formattedAddress;
-                    },
-                    (err) => {
-                        document.getElementById('gps-status').innerText = "GPS Ditolak / Off";
-                        document.getElementById('gps-status').className = "text-rose-600 font-semibold text-xs";
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
+            if (tab === 'sales') {
+                salesSec.classList.remove('hidden');
+                hrSec.classList.add('hidden');
+                salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
+                hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
             } else {
-                document.getElementById('gps-status').innerText = "GPS Tidak Didukung";
-                document.getElementById('gps-status').className = "text-rose-600 font-semibold text-xs";
+                salesSec.classList.add('hidden');
+                hrSec.classList.remove('hidden');
+                hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
+                salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
             }
         }
 
+        // FETCH MASTER DATA STORES & KARYAWAN
         async function fetchMasterData() {
-            const selectStore = document.getElementById('select-store');
             try {
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
-                if (data.status === "success") {
+                if (data.status === 'success') {
                     masterStores = data.stores || [];
                     masterKaryawan = data.karyawan || [];
                     populateStoreDropdown();
                 }
             } catch (err) {
-                selectStore.innerHTML = '<option value="">-- Mode Offline --</option>';
+                console.error('Error Master Data:', err);
             }
         }
 
         function populateStoreDropdown() {
-            const selectStore = document.getElementById('select-store');
-            selectStore.innerHTML = '<option value="">-- Pilih Store --</option>';
+            const selectStore = document.getElementById('selectStore');
+            selectStore.innerHTML = '<option value="">-- Pilih Cabang Store --</option>';
             masterStores.forEach(s => {
                 const opt = document.createElement('option');
-                opt.value = s.id;
+                opt.value = s.nama;
                 opt.textContent = s.nama;
+                opt.dataset.id = s.id;
                 selectStore.appendChild(opt);
             });
         }
 
         function onStoreChange() {
-            clearPhotoPreview();
-            const storeSelect = document.getElementById('select-store');
-            const storeId = storeSelect.value;
-            const selectEmp = document.getElementById('select-employee');
-            selectEmp.innerHTML = '';
-            
-            if (!storeId) {
-                selectEmp.disabled = true;
-                selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-100 text-slate-500 disabled:cursor-not-allowed transition";
-                selectEmp.innerHTML = '<option value="">-- Pilih Store Terlebih Dahulu --</option>';
-                return;
-            }
+            const selectedStoreNama = document.getElementById('selectStore').value;
+            const selectKaryawan = document.getElementById('selectKaryawan');
+            selectKaryawan.innerHTML = '<option value="">-- Pilih Nama Sales --</option>';
 
-            const filteredEmp = masterKaryawan.filter(k => k.storeId === storeId);
-            selectEmp.disabled = false;
-            selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
-            selectEmp.innerHTML = '<option value="">-- Pilih Nama Sales --</option>';
+            const selectedStoreObj = masterStores.find(s => s.nama === selectedStoreNama);
+            const storeId = selectedStoreObj ? selectedStoreObj.id : null;
 
-            filteredEmp.forEach(k => {
+            const filteredSales = masterKaryawan.filter(k => !storeId || k.storeId === storeId);
+            filteredSales.forEach(k => {
                 const opt = document.createElement('option');
                 opt.value = k.nama;
-                opt.textContent = `${k.nama} (${k.jabatan})`;
-                selectEmp.appendChild(opt);
+                opt.textContent = `${k.nama} (${k.jabatan || 'Sales'})`;
+                selectKaryawan.appendChild(opt);
             });
-
-            resetAttendanceStateUI();
         }
 
-        async function checkUserAttendanceState() {
-            clearPhotoPreview();
-            const storeSelect = document.getElementById('select-store');
-            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
-            const karyawanNama = document.getElementById('select-employee').value;
-            
-            if (!karyawanNama) { resetAttendanceStateUI(); return; }
+        async function onKaryawanChange() {
+            const karyawan = document.getElementById('selectKaryawan').value;
+            const store = document.getElementById('selectStore').value;
+            const badge = document.getElementById('badgeLiveStatus');
 
-            const statusBadge = document.getElementById('attendance-status');
-            const btnIn = document.getElementById('btn-clock-in');
-            const btnOut = document.getElementById('btn-clock-out');
-            const btnPengajuan = document.getElementById('btn-open-pengajuan');
+            if (!karyawan) {
+                badge.textContent = 'Belum Dipilih';
+                badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
+                return;
+            }
 
-            btnIn.disabled = true; btnOut.disabled = true; btnPengajuan.disabled = true;
-            statusBadge.innerText = "Mengecek status live...";
-            statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 animate-pulse";
-
+            badge.textContent = 'Mengecek...';
             try {
-                const res = await fetch(`${SCRIPT_URL}?action=check_status&karyawan=${encodeURIComponent(karyawanNama)}&store=${encodeURIComponent(storeNama)}`);
+                const url = `${SCRIPT_URL}?action=check_status&karyawan=${encodeURIComponent(karyawan)}&store=${encodeURIComponent(store)}`;
+                const res = await fetch(url);
                 const data = await res.json();
-
-                if (data.status === "success" && data.lastStatus !== "Belum Absen") {
-                    const serverStatus = data.lastStatus;
-                    
-                    if (serverStatus === 'Clock In') {
-                        statusBadge.innerText = 'Sudah Clock In';
-                        statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
-                        btnIn.disabled = true; btnOut.disabled = false; btnPengajuan.disabled = false;
-                        lockUserDropdowns(true);
-                    } else if (serverStatus === 'Clock Out') {
-                        statusBadge.innerText = 'Sudah Clock Out (Selesai)';
-                        statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
-                        btnIn.disabled = true; btnOut.disabled = true; btnPengajuan.disabled = true;
-                        lockUserDropdowns(true);
-                    } else if (serverStatus.includes('Pengajuan')) {
-                        statusBadge.innerText = `Sudah Mengajukan (${serverStatus})`;
-                        statusBadge.className = serverStatus.includes('DI ACC') ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800' : (serverStatus.includes('DI REJECT') ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800' : 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800');
-                        btnIn.disabled = true; btnOut.disabled = true; btnPengajuan.disabled = true;
-                        lockUserDropdowns(true);
-                    }
-                    return;
-                }
-            } catch (err) {
-                statusBadge.innerText = "Koneksi Bermasalah";
-                statusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800";
-            }
-
-            resetAttendanceStateUI();
-        }
-
-        function lockUserDropdowns(isLocked) {
-            const selectStore = document.getElementById('select-store');
-            const selectEmp = document.getElementById('select-employee');
-            const badgeStore = document.getElementById('store-lock-badge');
-            const btnReset = document.getElementById('btn-reset-user');
-
-            if (isLocked) {
-                selectStore.disabled = true;
-                selectEmp.disabled = true;
-                selectStore.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-200 text-slate-600 font-bold cursor-not-allowed transition";
-                selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-200 text-slate-600 font-bold cursor-not-allowed transition";
-                badgeStore.classList.remove('hidden');
-                btnReset.classList.remove('hidden');
-            } else {
-                selectStore.disabled = false;
-                selectEmp.disabled = false;
-                selectStore.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
-                selectEmp.className = "w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition";
-                badgeStore.classList.add('hidden');
-                btnReset.classList.add('hidden');
-            }
-        }
-
-        function resetUserSelection() {
-            lockUserDropdowns(false);
-            document.getElementById('select-employee').value = "";
-            clearPhotoPreview();
-            resetAttendanceStateUI();
-        }
-
-        function resetAttendanceStateUI() {
-            document.getElementById('attendance-status').innerText = 'Belum Absen';
-            document.getElementById('attendance-status').className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
-            document.getElementById('btn-clock-in').disabled = false;
-            document.getElementById('btn-clock-out').disabled = false;
-            document.getElementById('btn-open-pengajuan').disabled = false;
-        }
-
-        function clearPhotoPreview() {
-            compressedBase64Photo = "";
-            document.getElementById('camera-input').value = "";
-            document.getElementById('image-preview').src = "";
-            document.getElementById('image-preview').classList.add('hidden');
-            document.getElementById('camera-placeholder').classList.remove('hidden');
-        }
-
-        function clearModalPhotoOnly() {
-            modalCompressedBase64Photo = "";
-            document.getElementById('modal-camera-input').value = "";
-            document.getElementById('modal-image-preview').src = "";
-            document.getElementById('modal-image-preview').classList.add('hidden');
-            document.getElementById('modal-camera-placeholder').classList.remove('hidden');
-        }
-
-        function resetModalFormFull() {
-            clearModalPhotoOnly();
-            document.getElementById('modal-input-alasan').value = "";
-        }
-
-        function previewAndCompressImage(event) {
-            const file = event.target.files[0];
-            if (!file) { clearPhotoPreview(); return; }
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(e) {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const MAX_WIDTH = 600;
-                    if (width > MAX_WIDTH) {
-                        height = Math.round((height * MAX_WIDTH) / width);
-                        width = MAX_WIDTH;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    compressedBase64Photo = canvas.toDataURL('image/jpeg', 0.6);
-                    document.getElementById('image-preview').src = compressedBase64Photo;
-                    document.getElementById('image-preview').classList.remove('hidden');
-                    document.getElementById('camera-placeholder').classList.add('hidden');
-                };
-            };
-        }
-
-        function previewAndCompressModalImage(event) {
-            const file = event.target.files[0];
-            if (!file) { clearModalPhotoOnly(); return; }
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(e) {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const MAX_WIDTH = 600;
-                    if (width > MAX_WIDTH) {
-                        height = Math.round((height * MAX_WIDTH) / width);
-                        width = MAX_WIDTH;
-                    }
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-                    modalCompressedBase64Photo = canvas.toDataURL('image/jpeg', 0.6);
-                    document.getElementById('modal-image-preview').src = modalCompressedBase64Photo;
-                    document.getElementById('modal-image-preview').classList.remove('hidden');
-                    document.getElementById('modal-camera-placeholder').classList.add('hidden');
-                };
-            };
-        }
-
-        function saveToOfflineQueue(payload) {
-            if (!db) return;
-            const tx = db.transaction("offline_queue", "readwrite");
-            const store = tx.objectStore("offline_queue");
-            store.add(payload);
-            tx.oncomplete = function() {
-                updateOfflineBadge();
-                alert(`MODE OFFLINE TERDETEKSI!\nData ${payload.status} tersimpan di HP Anda. Data otomatis terkirim saat online.`);
-            };
-        }
-
-        function syncOfflineQueue() {
-            if (!db || !navigator.onLine) return;
-            const tx = db.transaction("offline_queue", "readwrite");
-            const store = tx.objectStore("offline_queue");
-            const req = store.getAll();
-
-            req.onsuccess = async function() {
-                const items = req.result;
-                if (items.length === 0) { updateOfflineBadge(); return; }
-
-                for (const item of items) {
-                    try {
-                        await fetch(SCRIPT_URL, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain' },
-                            body: JSON.stringify(item)
-                        });
-                        const delTx = db.transaction("offline_queue", "readwrite");
-                        delTx.objectStore("offline_queue").delete(item.id);
-                    } catch (err) {
-                        break;
-                    }
-                }
-                updateOfflineBadge();
-            };
-        }
-
-        function updateOfflineBadge() {
-            if (!db) return;
-            const tx = db.transaction("offline_queue", "readonly");
-            const store = tx.objectStore("offline_queue");
-            const req = store.count();
-
-            req.onsuccess = function() {
-                const count = req.result;
-                const banner = document.getElementById('offline-banner');
-                const text = document.getElementById('offline-banner-text');
-                if (count > 0) {
-                    banner.classList.remove('hidden');
-                    text.innerText = `🟠 Mode Offline: ${count} Data tersimpan di HP`;
-                } else {
-                    banner.classList.add('hidden');
-                }
-            };
-        }
-
-        async function submitAttendance(type) {
-            const storeSelect = document.getElementById('select-store');
-            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
-            const karyawanNama = document.getElementById('select-employee').value;
-            const gps = document.getElementById('gps-status').innerText;
-
-            if (!storeSelect.value || !karyawanNama || !compressedBase64Photo) {
-                alert("Harap lengkapi Store, Nama Sales, dan Foto Selfie WAJIB dilampirkan!");
-                return;
-            }
-
-            const btnIn = document.getElementById('btn-clock-in');
-            const btnOut = document.getElementById('btn-clock-out');
-            btnIn.disabled = true; btnOut.disabled = true;
-
-            if (type === 'Clock In') document.getElementById('btn-in-text').innerText = "Mengirim...";
-            if (type === 'Clock Out') document.getElementById('btn-out-text').innerText = "Mengirim...";
-
-            const payload = {
-                timestamp: new Date().toISOString(),
-                storeNama: storeNama,
-                karyawanNama: karyawanNama,
-                shiftNama: "-",
-                status: type,
-                jenisPengajuan: "-",
-                catatan: "-",
-                gps: gps,
-                fotoBase64: compressedBase64Photo
-            };
-
-            if (!navigator.onLine) {
-                saveToOfflineQueue(payload);
-                clearPhotoPreview();
-                checkUserAttendanceState();
-                document.getElementById('btn-in-text').innerText = "Clock In";
-                document.getElementById('btn-out-text').innerText = "Clock Out";
-                return;
-            }
-
-            try {
-                const res = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-                const resData = await res.json();
-                if (resData.status === "error") {
-                    alert(`GAGAL: ${resData.message}`);
-                } else {
-                    alert(`Berhasil ${type}!\nSales: ${karyawanNama}\nStore: ${storeNama}`);
-                }
-                clearPhotoPreview();
-                checkUserAttendanceState();
-            } catch (err) {
-                saveToOfflineQueue(payload);
-                clearPhotoPreview();
-                checkUserAttendanceState();
-            }
-            document.getElementById('btn-in-text').innerText = "Clock In";
-            document.getElementById('btn-out-text').innerText = "Clock Out";
-        }
-
-        function openModalPengajuan() {
-            resetModalFormFull();
-            const storeSelect = document.getElementById('select-store');
-            const karyawanNama = document.getElementById('select-employee').value;
-            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
-
-            if (!storeSelect.value || !karyawanNama) {
-                alert("Harap pilih Store dan Nama Sales terlebih dahulu!");
-                return;
-            }
-            document.getElementById('modal-info-sales').innerText = `Sales: ${karyawanNama}`;
-            document.getElementById('modal-info-store').innerText = `Store: ${storeNama}`;
-            document.getElementById('modal-pengajuan').classList.remove('hidden');
-        }
-
-        function closeModalPengajuan() { 
-            resetModalFormFull();
-            document.getElementById('modal-pengajuan').classList.add('hidden'); 
-        }
-
-        async function submitModalPengajuan() {
-            const storeSelect = document.getElementById('select-store');
-            const storeNama = storeSelect.options[storeSelect.selectedIndex]?.text || '';
-            const karyawanNama = document.getElementById('select-employee').value;
-            const tipePengajuan = document.getElementById('modal-select-tipe').value;
-            const alasanInput = document.getElementById('modal-input-alasan').value.trim();
-            const gps = document.getElementById('gps-status').innerText;
-
-            if (!alasanInput || !modalCompressedBase64Photo) {
-                alert("Alasan dan Foto Bukti WAJIB diisi!");
-                return;
-            }
-
-            const btnSubmit = document.getElementById('btn-submit-modal');
-            btnSubmit.disabled = true;
-            document.getElementById('btn-modal-text').innerText = "Mengirim...";
-
-            const statusFormatted = `Pengajuan: ${tipePengajuan}`;
-            const payload = {
-                timestamp: new Date().toISOString(),
-                storeNama: storeNama,
-                karyawanNama: karyawanNama,
-                shiftNama: "-",
-                status: statusFormatted,
-                jenisPengajuan: tipePengajuan,
-                catatan: alasanInput,
-                gps: gps,
-                fotoBase64: modalCompressedBase64Photo
-            };
-
-            document.getElementById('modal-pengajuan').classList.add('hidden');
-
-            if (!navigator.onLine) {
-                saveToOfflineQueue(payload);
-                resetModalFormFull();
-                checkUserAttendanceState();
-                btnSubmit.disabled = false;
-                document.getElementById('btn-modal-text').innerText = "Kirim Pengajuan";
-                return;
-            }
-
-            try {
-                const res = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-                const resData = await res.json();
-                if (resData.status === "error") {
-                    alert(`PENGAJUKAN DITOLAK:\n${resData.message}`);
-                } else {
-                    alert(`Berhasil Mengirim Pengajuan ${tipePengajuan}!`);
-                }
-                resetModalFormFull();
-                checkUserAttendanceState();
-            } catch (err) {
-                saveToOfflineQueue(payload);
-                resetModalFormFull();
-                checkUserAttendanceState();
-            }
-            btnSubmit.disabled = false;
-            document.getElementById('btn-modal-text').innerText = "Kirim Pengajuan";
-        }
-
-        // PORTAL HR LOGIC
-        function openHRPortalModal() { document.getElementById('modal-hr-portal').classList.remove('hidden'); }
-        function closeHRPortalModal() { document.getElementById('modal-hr-portal').classList.add('hidden'); }
-
-        async function verifyHRPin() {
-            const inputPin = document.getElementById('hr-pin-input').value;
-            if (!inputPin) { alert("Masukkan PIN!"); return; }
-
-            const btnVerify = document.getElementById('btn-verify-pin');
-            btnVerify.disabled = true;
-            document.getElementById('btn-pin-text').innerText = "Memeriksa...";
-
-            try {
-                const res = await fetch(`${SCRIPT_URL}?action=verify_pin&pin=${encodeURIComponent(inputPin)}`);
-                const data = await res.json();
-
-                if (data.status === "success") {
-                    document.getElementById('hr-pin-screen').classList.add('hidden');
-                    document.getElementById('hr-dashboard-screen').classList.remove('hidden');
-                    fetchAdminHRData();
-                } else {
-                    alert("PIN SALAH! Akses Ditolak.");
-                }
-            } catch (err) {
-                alert("Gagal memverifikasi PIN dengan server.");
-            }
-            btnVerify.disabled = false;
-            document.getElementById('btn-pin-text').innerText = "Buka Portal";
-        }
-
-        function setStatusTabFilter(tabType) {
-            activeStatusTab = tabType;
-            ['all', 'pending', 'Sakit', 'Izin', 'Cuti', 'Tugas-Luar', 'acc', 'reject'].forEach(t => {
-                const btn = document.getElementById(`tab-status-${t}`);
-                if (btn) {
-                    if (t === tabType || (t === 'Tugas-Luar' && tabType === 'Tugas Luar')) {
-                        btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 text-white shrink-0 shadow";
-                    } else {
-                        btn.className = "px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 shrink-0";
-                    }
-                }
-            });
-            filterHRCardsLocally();
-        }
-
-        async function fetchAdminHRData() {
-            const container = document.getElementById('hr-approval-list');
-            container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Memuat data live...</p>';
-
-            const startDate = document.getElementById('hr-filter-start').value;
-            const endDate = document.getElementById('hr-filter-end').value;
-
-            if (startDate && endDate && startDate > endDate) {
-                alert("Tanggal Awal tidak boleh lebih besar dari Tanggal Akhir!");
-                container.innerHTML = '<p class="text-xs text-rose-500 text-center py-4">Rentang tanggal tidak valid.</p>';
-                return;
-            }
-
-            try {
-                const res = await fetch(`${SCRIPT_URL}?action=admin&startDate=${startDate}&endDate=${endDate}`);
-                const data = await res.json();
-
-                if (data.status === "success") {
-                    fetchedLogsCache = data.logs || [];
-                    filterHRCardsLocally();
-                }
-            } catch (err) {
-                container.innerHTML = '<p class="text-xs text-rose-500 text-center py-4">Gagal memuat data admin HR.</p>';
-            }
-        }
-
-        function filterHRCardsLocally() {
-            const search = document.getElementById('hr-filter-search').value.toLowerCase();
-            
-            let filtered = fetchedLogsCache.filter(l => {
-                const matchSearch = l.karyawan.toLowerCase().includes(search) || 
-                                    l.store.toLowerCase().includes(search) ||
-                                    l.status.toLowerCase().includes(search) ||
-                                    l.jenisPengajuan.toLowerCase().includes(search) ||
-                                    (l.catatan && l.catatan.toLowerCase().includes(search)) ||
-                                    (l.gps && l.gps.toLowerCase().includes(search));
                 
-                const isApproved = l.status.includes('DI ACC') || l.approvalStatus === 'DI ACC';
-                const isRejected = l.status.includes('DI REJECT') || l.approvalStatus === 'DI REJECT';
-                const isPending = l.status.includes('Pengajuan') && !isApproved && !isRejected;
-
-                if (activeStatusTab === 'pending') return matchSearch && isPending;
-                if (activeStatusTab === 'acc') return matchSearch && isApproved;
-                if (activeStatusTab === 'reject') return matchSearch && isRejected;
-                if (activeStatusTab === 'Sakit' || activeStatusTab === 'Izin' || activeStatusTab === 'Cuti' || activeStatusTab === 'Tugas Luar') {
-                    return matchSearch && l.jenisPengajuan === activeStatusTab;
+                if (data.status === 'success') {
+                    const st = data.lastStatus || 'Belum Absen';
+                    badge.textContent = st;
+                    if (st === 'Clock In') {
+                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700';
+                    } else if (st === 'Clock Out') {
+                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700';
+                    } else if (st.includes('Pengajuan')) {
+                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700';
+                    } else {
+                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
+                    }
                 }
-                return matchSearch;
-            });
-
-            renderHRLogCards(filtered);
+            } catch (err) {
+                badge.textContent = 'Offline Mode';
+            }
         }
 
-        function renderHRLogCards(logs) {
-            const container = document.getElementById('hr-approval-list');
-            
-            let countIn = 0, countOut = 0, countSakit = 0, countIzin = 0, countCuti = 0, countTugas = 0;
-            fetchedLogsCache.forEach(l => {
-                if (l.status === 'Clock In') countIn++;
-                else if (l.status === 'Clock Out') countOut++;
-                else {
-                    if (l.jenisPengajuan === 'Sakit' || l.status.includes('Sakit')) countSakit++;
-                    else if (l.jenisPengajuan === 'Izin' || l.status.includes('Izin')) countIzin++;
-                    else if (l.jenisPengajuan === 'Cuti' || l.status.includes('Cuti')) countCuti++;
-                    else if (l.jenisPengajuan === 'Tugas Luar' || l.status.includes('Tugas')) countTugas++;
-                }
-            });
+        // ABSEN MODE SWITCHER
+        function setAbsenMode(mode) {
+            currentMode = mode;
+            const btnIn = document.getElementById('btnClockIn');
+            const btnOut = document.getElementById('btnClockOut');
+            const btnPeng = document.getElementById('btnPengajuan');
+            const secShift = document.getElementById('sectionShift');
+            const secPeng = document.getElementById('sectionPengajuan');
 
-            document.getElementById('hr-count-in').innerText = countIn;
-            document.getElementById('hr-count-out').innerText = countOut;
-            document.getElementById('hr-count-sakit').innerText = countSakit;
-            document.getElementById('hr-count-izin').innerText = countIzin;
-            document.getElementById('hr-count-cuti').innerText = countCuti;
-            document.getElementById('hr-count-tugas').innerText = countTugas;
+            [btnIn, btnOut, btnPeng].forEach(b => b.className = "py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-semibold text-xs flex flex-col items-center justify-center space-y-1 transition");
+
+            if (mode === 'Clock In') {
+                btnIn.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
+                secShift.classList.remove('hidden');
+                secPeng.classList.add('hidden');
+            } else if (mode === 'Clock Out') {
+                btnOut.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
+                secShift.classList.remove('hidden');
+                secPeng.classList.add('hidden');
+            } else {
+                btnPeng.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
+                secShift.classList.add('hidden');
+                secPeng.classList.remove('hidden');
+            }
+        }
+
+        function updateCharCount() {
+            const val = document.getElementById('textCatatan').value;
+            document.getElementById('charCounter').textContent = `${val.length}/250`;
+        }
+
+        // GEOLOCATION ENGINE
+        function initGeolocation() {
+            const gpsText = document.getElementById('gpsLocationText');
+            gpsText.textContent = 'Mendeteksi Lokasi GPS...';
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        const lat = pos.coords.latitude.toFixed(6);
+                        const lon = pos.coords.longitude.toFixed(6);
+                        currentGpsCoords = `${lat}, ${lon}`;
+                        gpsText.textContent = `GPS Terkunci: ${currentGpsCoords}`;
+                    },
+                    err => {
+                        currentGpsCoords = '-6.2088, 106.8456 (Default Jakarta)';
+                        gpsText.textContent = 'GPS Manual / Akurasi Rendah';
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else {
+                gpsText.textContent = 'Geolokasi Tidak Didukung Browser';
+            }
+        }
+
+        // CAMERA ENGINE (<150KB COMPRESSION)
+        async function startWebcam() {
+            const video = document.getElementById('webcam');
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                video.srcObject = videoStream;
+            } catch (err) {
+                console.warn('Gagal Buka Kamera Web:', err);
+            }
+        }
+
+        function takeSnapshot() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('photoCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 480;
+            canvas.height = 360;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Compress to JPEG Quality 0.6 (< 150KB)
+            capturedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+
+            video.classList.add('hidden');
+            canvas.classList.remove('hidden');
+            document.getElementById('btnCapture').classList.add('hidden');
+            document.getElementById('btnRetake').classList.remove('hidden');
+        }
+
+        function resetCamera() {
+            const video = document.getElementById('webcam');
+            const canvas = document.getElementById('photoCanvas');
+            capturedBase64 = '';
+
+            canvas.classList.add('hidden');
+            video.classList.remove('hidden');
+            document.getElementById('btnCapture').classList.remove('hidden');
+            document.getElementById('btnRetake').classList.add('hidden');
+        }
+
+        // SUBMIT PRESENSI FORM
+        async function submitPresensi() {
+            const storeNama = document.getElementById('selectStore').value;
+            const karyawanNama = document.getElementById('selectKaryawan').value;
+            const shiftNama = document.getElementById('selectShift').value;
+            const jenisPengajuan = document.getElementById('selectJenisPengajuan').value;
+            const catatan = document.getElementById('textCatatan').value;
+            const btnSubmit = document.getElementById('btnSubmitPresensi');
+            const btnText = document.getElementById('btnSubmitText');
+
+            if (!storeNama || !karyawanNama) {
+                alert('Pilih Cabang Store dan Nama Karyawan terlebih dahulu!');
+                return;
+            }
+
+            if (!capturedBase64) {
+                alert('Foto Selfie / Surat Bukti WAJIB diambil!');
+                return;
+            }
+
+            // Lock UI Button (Race Condition Prevention)
+            btnSubmit.disabled = true;
+            btnText.textContent = 'MEMPROSES & MENGIRIM...';
+
+            const payload = {
+                timestamp: new Date().toISOString(),
+                storeNama: storeNama,
+                karyawanNama: karyawanNama,
+                shiftNama: (currentMode === 'Pengajuan') ? '-' : shiftNama,
+                status: (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan}` : currentMode,
+                jenisPengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
+                catatan: catatan || '-',
+                gps: currentGpsCoords,
+                fotoBase64: capturedBase64
+            };
+
+            try {
+                const res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    alert('🎉 Presensi Berhasil Tersimpan!');
+                    document.getElementById('textCatatan').value = '';
+                    resetCamera();
+                    onKaryawanChange();
+                } else {
+                    alert('⚠️ Gagal: ' + data.message);
+                }
+            } catch (err) {
+                alert('❌ Terjadi Kesalahan Koneksi Server');
+            } finally {
+                btnSubmit.disabled = false;
+                btnText.textContent = 'KIRIM PRESENSI SEKARANG';
+            }
+        }
+
+        // =================================================================
+        // PORTAL HR ENGINE
+        // =================================================================
+        async function verifyHrPin() {
+            const pin = document.getElementById('inputHrPin').value;
+            if (!pin) {
+                alert('Masukkan PIN HR Admin!');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=verify_pin&pin=${encodeURIComponent(pin)}`);
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    document.getElementById('hrAuthCard').classList.add('hidden');
+                    document.getElementById('hrDashboardContent').classList.remove('hidden');
+                    loadHrLogs();
+                } else {
+                    alert('🔒 PIN HR Salah!');
+                }
+            } catch (err) {
+                alert('Gagal Verifikasi PIN');
+            }
+        }
+
+        async function loadHrLogs() {
+            const start = document.getElementById('filterStartDate').value;
+            const end = document.getElementById('filterEndDate').value;
+            const tbody = document.getElementById('tableHrLogsBody');
+
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500">Memuat Data Absensi dari Server...</td></tr>';
+
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=admin&startDate=${start}&endDate=${end}`);
+                const data = await res.json();
+
+                if (data.status === 'success' && data.logs) {
+                    document.getElementById('logCountBadge').textContent = `${data.logs.length} Data`;
+                    renderHrLogsTable(data.logs);
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Tidak ada data ditemukan pada rentang tanggal ini.</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-500">Gagal mengambil data dari server.</td></tr>';
+            }
+        }
+
+        function renderHrLogsTable(logs) {
+            const tbody = document.getElementById('tableHrLogsBody');
+            tbody.innerHTML = '';
 
             if (logs.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Tidak ada data untuk filter / pencarian ini.</p>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Tidak ada data.</td></tr>';
                 return;
             }
 
-            container.innerHTML = '';
-            logs.slice().reverse().forEach(log => {
-                const isLeave = log.status.includes('Pengajuan');
-                const isApproved = log.status.includes('DI ACC') || log.approvalStatus === 'DI ACC';
-                const isRejected = log.status.includes('DI REJECT') || log.approvalStatus === 'DI REJECT';
-                const isPending = isLeave && !isApproved && !isRejected;
+            logs.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition border-b border-gray-100";
 
-                const directImageUrl = convertDriveUrlToDirectStream(log.fotoUrl);
+                const dateFormatted = new Date(row.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
 
-                const itemHtml = `
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
-                        <div class="flex justify-between font-bold text-slate-800">
-                            <span>${log.karyawan}</span>
-                            <span class="${isLeave ? (isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')) : 'text-indigo-600'}">${log.status}</span>
-                        </div>
-                        <div class="text-slate-500 text-[11px] space-y-0.5">
-                            <p>🏬 Store: ${log.store}</p>
-                            ${log.jenisPengajuan !== '-' ? `<p>📌 Kategori: <strong class="text-indigo-700">${log.jenisPengajuan}</strong></p>` : ''}
-                            <p>📅 Waktu: ${new Date(log.timestamp).toLocaleString('id-ID')}</p>
-                            ${log.catatan !== '-' ? `<p class="italic text-slate-700">📝 Note: "${log.catatan}"</p>` : ''}
-                            ${log.alasanReject !== '-' ? `<p class="text-rose-600 font-medium">⚠️ Alasan Reject: "${log.alasanReject}"</p>` : ''}
-                            <p>📍 GPS: ${log.gps}</p>
-                            ${directImageUrl ? `<p><button onclick="openLightbox('${directImageUrl}')" class="text-indigo-600 font-semibold underline cursor-pointer">🖼️ Preview Foto Bukti (Lightbox)</button></p>` : ''}
-                        </div>
-                        
-                        ${isLeave ? `
-                            <div class="pt-1.5 flex justify-between items-center border-t border-slate-200">
-                                <span class="text-[10px] font-bold ${isApproved ? 'text-emerald-600' : (isRejected ? 'text-rose-600' : 'text-amber-600')}">
-                                    Status: ${isApproved ? 'DI ACC ✅' : (isRejected ? 'DI REJECT ❌' : 'Pending Action')}
-                                </span>
-                                
-                                ${isPending ? `
-                                    <div class="flex gap-1">
-                                        <button onclick="handleHRApprovalClick(${log.rowId}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
-                                            ACC (Approve) ✅
-                                        </button>
-                                        <button onclick="handleHRApprovalClick(${log.rowId}, 'Rejected')" class="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold shadow transition cursor-pointer">
-                                            REJECT ❌
-                                        </button>
-                                    </div>
-                                ` : `
-                                    <span class="px-2.5 py-0.5 rounded-md text-[10px] font-extrabold ${isApproved ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'}">
-                                        ${isApproved ? 'Selesai (DI ACC) ✅' : 'Selesai (DI REJECT) ❌'}
-                                    </span>
-                                `}
-                            </div>
-                        ` : ''}
-                    </div>
+                let badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600">${row.approvalStatus}</span>`;
+                if (row.approvalStatus === 'DI ACC') badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">DI ACC</span>`;
+                if (row.approvalStatus === 'DI REJECT') badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">DI REJECT</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-[11px] whitespace-nowrap">${dateFormatted}</td>
+                    <td class="p-3">
+                        <div class="font-bold text-gray-900">${row.karyawan}</div>
+                        <div class="text-[10px] text-gray-500">${row.store}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="font-semibold text-indigo-600">${row.status}</div>
+                        <div class="text-[10px] text-gray-400">${row.shift}</div>
+                    </td>
+                    <td class="p-3">
+                        ${row.fotoUrl && row.fotoUrl.startsWith('http') 
+                            ? `<button onclick="openLightbox('${row.fotoUrl}', '${row.karyawan}')" class="text-xs text-indigo-600 font-bold underline flex items-center"><i class="fa-solid fa-image mr-1"></i> Lihat Foto</button>` 
+                            : `<span class="text-gray-400 text-[10px]">-</span>`}
+                    </td>
+                    <td class="p-3">${badgeApproval}</td>
+                    <td class="p-3 text-center space-x-1 whitespace-nowrap">
+                        <button onclick="approveAction(${row.rowId})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
+                        <button onclick="openRejectModal(${row.rowId})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
+                    </td>
                 `;
-                container.insertAdjacentHTML('beforeend', itemHtml);
+                tbody.appendChild(tr);
             });
         }
 
-        function convertDriveUrlToDirectStream(rawUrl) {
-            if (!rawUrl || !rawUrl.includes('drive.google.com')) return '';
-            const match = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (match && match[1]) {
-                return `https://lh3.googleusercontent.com/d/${match[1]}`;
-            }
-            return rawUrl;
+        // HR APPROVAL ACTIONS
+        async function approveAction(rowId) {
+            if (!confirm('Apakah Anda yakin ingin menyetujui (ACC) pengajuan ini?')) return;
+            await sendApprovalToBackend(rowId, 'Approved', '-');
         }
 
-        async function handleHRApprovalClick(rowId, statusVal) {
-            let reason = "-";
-            if (statusVal === 'Rejected') {
-                const promptVal = prompt("Masukkan alasan penolakan pengajuan ini (WAJIB ISIAN FOR HR):");
-                if (!promptVal || promptVal.trim() === "") {
-                    alert("PENOLAKAN DIBATALKAN! Alasan penolakan wajib diisi oleh HR.");
-                    return;
-                }
-                reason = promptVal.trim();
-            }
+        function openRejectModal(rowId) {
+            selectedRowForReject = rowId;
+            document.getElementById('inputRejectReason').value = '';
+            document.getElementById('rejectModal').classList.remove('hidden');
+        }
 
+        function closeRejectModal() {
+            selectedRowForReject = null;
+            document.getElementById('rejectModal').classList.add('hidden');
+        }
+
+        async function confirmRejectAction() {
+            const reason = document.getElementById('inputRejectReason').value;
+            if (!reason) {
+                alert('Alasan penolakan wajib diisi!');
+                return;
+            }
+            const rId = selectedRowForReject;
+            closeRejectModal();
+            await sendApprovalToBackend(rId, 'Rejected', reason);
+        }
+
+        async function sendApprovalToBackend(rowId, status, reason) {
             try {
                 const res = await fetch(SCRIPT_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ 
-                        action: "update_approval", 
-                        rowId: rowId, 
-                        approvalStatus: statusVal,
+                    body: JSON.stringify({
+                        action: 'update_approval',
+                        rowId: rowId,
+                        approvalStatus: status,
                         alasanReject: reason
                     })
                 });
-                alert(`Berhasil memperbarui pengajuan menjadi: ${statusVal === 'Approved' ? 'DI ACC ✅' : 'DI REJECT ❌'}`);
-                fetchAdminHRData();
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert('Status Approval Berhasil Diperbarui!');
+                    loadHrLogs();
+                } else {
+                    alert('Gagal: ' + data.message);
+                }
             } catch (err) {
-                alert("Gagal memperbarui status approval.");
+                alert('Kesalahan Server saat update approval');
             }
         }
 
-        function openLightbox(url) {
-            document.getElementById('lightbox-img').src = url;
-            document.getElementById('modal-lightbox').classList.remove('hidden');
+        // LIGHTBOX MODAL HANDLERS
+        function openLightbox(url, title) {
+            document.getElementById('lightboxTitle').textContent = `Foto Bukti: ${title}`;
+            document.getElementById('lightboxImg').src = url;
+            document.getElementById('lightboxModal').classList.remove('hidden');
         }
 
         function closeLightbox() {
-            document.getElementById('modal-lightbox').classList.add('hidden');
-        }
-
-        function exportHRDataToCSV() {
-            if (!fetchedLogsCache || fetchedLogsCache.length === 0) {
-                alert("Tidak ada data untuk diekspor!");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Timestamp,Nama Store,Nama Karyawan,Status Absen,Jenis Pengajuan,Catatan,GPS,Approval HR,Alasan Reject\n";
-
-            fetchedLogsCache.forEach(l => {
-                const cleanCatatan = (l.catatan || "-").replace(/"/g, '""').replace(/\n/g, ' ');
-                const cleanAlasan = (l.alasanReject || "-").replace(/"/g, '""').replace(/\n/g, ' ');
-                const cleanGps = (l.gps || "-").replace(/"/g, '""');
-
-                const row = [
-                    `"${new Date(l.timestamp).toLocaleString('id-ID')}"`,
-                    `"${l.store}"`,
-                    `"${l.karyawan}"`,
-                    `"${l.status}"`,
-                    `"${l.jenisPengajuan}"`,
-                    `"${cleanCatatan}"`,
-                    `"${cleanGps}"`,
-                    `"${l.approvalStatus}"`,
-                    `"${cleanAlasan}"`,
-                ].join(",");
-                csvContent += row + "\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Rekap_Absensi_HR_${new Date().toLocaleDateString('en-CA')}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            document.getElementById('lightboxModal').classList.add('hidden');
+            document.getElementById('lightboxImg').src = '';
         }
     </script>
 </body>

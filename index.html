@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Portal Absensi Store v4.3</title>
+    <title>Portal Absensi Store v5.0</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome CDN -->
@@ -26,7 +26,7 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-gray-900 text-lg leading-tight">Portal Absensi Store</h1>
-                    <p class="text-xs text-indigo-600 font-medium">v4.3 Production Ready</p>
+                    <p class="text-xs text-indigo-600 font-medium">v5.0 Production Ready</p>
                 </div>
             </div>
             
@@ -98,7 +98,6 @@
                     </div>
                 </div>
 
-                <!-- DYNAMIC FORM SECTIONS -->
                 <!-- SHIFT SELECTOR (TAMPIL JIKA CLOCK IN/OUT) -->
                 <div id="sectionShift" class="space-y-1.5">
                     <label class="block text-xs font-semibold text-gray-600">Jam Shift Kerja</label>
@@ -124,7 +123,7 @@
                     </div>
                 </div>
 
-                <!-- CATATAN / ALASAN TEXTAREA (MAKS 250 CHAR) -->
+                <!-- CATATAN / ALASAN TEXTAREA -->
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-xs font-semibold text-gray-600">Catatan / Alasan / Keterangan</label>
@@ -142,17 +141,29 @@
                     <button type="button" onclick="initGeolocation()" class="text-indigo-600 hover:text-indigo-800 font-bold underline">Refresh GPS</button>
                 </div>
 
-                <!-- CAMERA SELFIE / PROOF CAPTURE SECTION -->
+                <!-- SECTION ATTACHMENT DUAL MODE (KAMERA VS UPLOAD FILE) -->
                 <div class="space-y-3">
-                    <label class="block text-xs font-semibold text-gray-600">
-                        Lampiran Foto Selfie / Surat Bukti <span class="text-red-500">*</span>
-                    </label>
-                    
-                    <div class="relative bg-black/90 rounded-2xl overflow-hidden min-h-[220px] flex items-center justify-center">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-xs font-semibold text-gray-600">
+                            Lampiran Bukti Presensi / Dokumen <span class="text-red-500">*</span>
+                        </label>
+                        
+                        <!-- SWITCH ATTACHMENT TYPE UNTUK PENGAJUAN -->
+                        <div id="attachTypeToggle" class="hidden flex bg-gray-100 p-0.5 rounded-lg text-[11px] font-semibold">
+                            <button type="button" id="toggleCamBtn" onclick="setAttachType('camera')" class="px-2.5 py-1 rounded-md bg-white text-indigo-600 shadow-sm">
+                                <i class="fa-solid fa-camera mr-1"></i> Kamera
+                            </button>
+                            <button type="button" id="toggleFileBtn" onclick="setAttachType('file')" class="px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900">
+                                <i class="fa-solid fa-file-arrow-up mr-1"></i> Upload File
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CONTAINER KAMERA SELFIE -->
+                    <div id="containerCamera" class="relative bg-black/90 rounded-2xl overflow-hidden min-h-[220px] flex items-center justify-center">
                         <video id="webcam" autoplay playsinline class="w-full h-56 object-cover"></video>
                         <canvas id="photoCanvas" class="hidden w-full h-56 object-cover"></canvas>
                         
-                        <!-- CAMERA OVERLAY BUTTONS -->
                         <div id="cameraControls" class="absolute bottom-3 left-0 right-0 flex justify-center items-center space-x-3 px-4">
                             <button type="button" id="btnCapture" onclick="takeSnapshot()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2 px-4 rounded-xl shadow-lg flex items-center space-x-1.5 transition">
                                 <i class="fa-solid fa-camera"></i>
@@ -164,7 +175,31 @@
                             </button>
                         </div>
                     </div>
-                    <p class="text-[11px] text-gray-400 italic text-center">* Foto dikompresi otomatis di bawah 150 KB sebelum dikirim.</p>
+
+                    <!-- CONTAINER UPLOAD FILE (PDF, DOC, IMAGE) -->
+                    <div id="containerFileUpload" class="hidden border-2 border-dashed border-gray-200 hover:border-indigo-400 bg-gray-50/50 rounded-2xl p-6 text-center space-y-3 transition">
+                        <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mx-auto text-xl">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-800">Klik untuk upload Surat Dokter / File Dokumen</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Mendukung format: PDF, DOCX, PNG, JPG (Maks 5 MB)</p>
+                        </div>
+                        <input type="file" id="filePicker" accept="image/*,.pdf,.doc,.docx" onchange="handleFileSelected(event)" class="hidden">
+                        <button type="button" onclick="document.getElementById('filePicker').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2 px-4 rounded-xl shadow transition">
+                            Pilih File Dokumen
+                        </button>
+                        
+                        <div id="filePreviewBadge" class="hidden items-center justify-between bg-white border border-indigo-100 rounded-xl p-3 text-xs text-left max-w-sm mx-auto shadow-sm">
+                            <div class="flex items-center space-x-2 truncate">
+                                <i id="fileIcon" class="fa-solid fa-file-pdf text-red-500 text-base"></i>
+                                <span id="fileNameText" class="font-semibold text-gray-700 truncate">document.pdf</span>
+                            </div>
+                            <button type="button" onclick="clearSelectedFile()" class="text-gray-400 hover:text-red-500 px-2 font-bold">&times;</button>
+                        </div>
+                    </div>
+
+                    <p id="attachNote" class="text-[11px] text-gray-400 italic text-center">* Foto dikompresi otomatis di bawah 150 KB sebelum dikirim.</p>
                 </div>
 
                 <!-- SUBMIT BUTTON -->
@@ -176,13 +211,12 @@
             </div>
         </section>
 
-
         <!-- ================================================================= -->
         <!-- TAB 2: PORTAL HR ADMIN (REKAP & APPROVAL) -->
         <!-- ================================================================= -->
         <section id="tabHrSection" class="hidden space-y-6">
             
-            <!-- AUTH MODAL CARD (JIKA BELUM LOGIN PIN HR) -->
+            <!-- AUTH MODAL CARD -->
             <div id="hrAuthCard" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 max-w-md mx-auto space-y-4 text-center">
                 <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
                     <i class="fa-solid fa-lock"></i>
@@ -199,10 +233,8 @@
                 </button>
             </div>
 
-            <!-- DASHBOARD HR CONTENT (TAMPIL SETELAH VERIFIKASI) -->
+            <!-- DASHBOARD HR CONTENT -->
             <div id="hrDashboardContent" class="hidden space-y-5">
-                
-                <!-- FILTER DATE & SEARCH -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal Mulai</label>
@@ -220,7 +252,6 @@
                     </div>
                 </div>
 
-                <!-- TABLE LOG ABSENSI -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 flex justify-between items-center">
                         <h3 class="font-bold text-gray-800 text-sm flex items-center">
@@ -236,31 +267,28 @@
                                     <th class="p-3">Waktu</th>
                                     <th class="p-3">Karyawan / Store</th>
                                     <th class="p-3">Status / Shift</th>
-                                    <th class="p-3">Bukti Foto</th>
+                                    <th class="p-3">Bukti File</th>
                                     <th class="p-3">Approval Status</th>
                                     <th class="p-3 text-center">Tindakan HR</th>
                                 </tr>
                             </thead>
                             <tbody id="tableHrLogsBody" class="divide-y divide-gray-100">
-                                <tr>
-                                    <td colspan="6" class="text-center py-8 text-gray-400">Silakan klik tombol filter untuk memuat data absensi.</td>
-                                </tr>
+                                <tr><td colspan="6" class="text-center py-8 text-gray-400">Klik filter untuk memuat data.</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
 
         </section>
 
     </main>
 
-    <!-- LIGHTBOX MODAL UNTUK PREVIEW FOTO BUKTI -->
+    <!-- LIGHTBOX MODAL -->
     <div id="lightboxModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="relative max-w-lg w-full bg-white rounded-2xl overflow-hidden shadow-2xl">
             <div class="p-3 bg-gray-900 text-white flex justify-between items-center">
-                <span id="lightboxTitle" class="font-semibold text-xs">Preview Bukti Foto</span>
+                <span id="lightboxTitle" class="font-semibold text-xs">Preview Lampiran</span>
                 <button type="button" onclick="closeLightbox()" class="text-gray-400 hover:text-white px-2 text-lg">&times;</button>
             </div>
             <div class="p-2 bg-black flex justify-center items-center min-h-[250px]">
@@ -269,7 +297,7 @@
         </div>
     </div>
 
-    <!-- REJECT REASON MODAL -->
+    <!-- REJECT MODAL -->
     <div id="rejectModal" class="fixed inset-0 z-50 bg-black/50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-5 max-w-sm w-full space-y-4 shadow-2xl">
             <h4 class="font-bold text-gray-900 text-sm">Alasan Penolakan Pengajuan</h4>
@@ -281,23 +309,20 @@
         </div>
     </div>
 
-    <!-- ================================================================= -->
     <!-- JAVASCRIPT LOGIC ENGINE -->
-    <!-- ================================================================= -->
     <script>
-        // CONFIGURATION: APPS SCRIPT / SUPABASE PROXY ENDPOINT
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbysnYJNbtypJLXnG9OzVJF7Q9X1uMl9kjqzR_ukg-Jnq4GKGNHnbOAQbqrPd3FEvfu0/exec';
 
-        // STATE VARIABLES
         let currentMode = 'Clock In';
+        let currentAttachType = 'camera'; // 'camera' ATAU 'file'
         let masterStores = [];
         let masterKaryawan = [];
         let capturedBase64 = '';
+        let uploadedFileObj = null;
         let currentGpsCoords = '-';
         let videoStream = null;
         let selectedRowForReject = null;
 
-        // INITIALIZATION ON LOAD
         window.addEventListener('DOMContentLoaded', () => {
             initDates();
             fetchMasterData();
@@ -311,7 +336,6 @@
             document.getElementById('filterEndDate').value = today;
         }
 
-        // SWITCH TAB (SALES vs HR)
         function switchTab(tab) {
             const salesSec = document.getElementById('tabSalesSection');
             const hrSec = document.getElementById('tabHrSection');
@@ -323,15 +347,16 @@
                 hrSec.classList.add('hidden');
                 salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
                 hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
+                if (currentAttachType === 'camera') startWebcam();
             } else {
                 salesSec.classList.add('hidden');
                 hrSec.classList.remove('hidden');
                 hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
                 salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
+                stopWebcam(); // MATIKAN KAMERA SAAT KE TAB HR
             }
         }
 
-        // FETCH MASTER DATA STORES & KARYAWAN
         async function fetchMasterData() {
             try {
                 const res = await fetch(SCRIPT_URL);
@@ -341,9 +366,7 @@
                     masterKaryawan = data.karyawan || [];
                     populateStoreDropdown();
                 }
-            } catch (err) {
-                console.error('Error Master Data:', err);
-            }
+            } catch (err) {}
         }
 
         function populateStoreDropdown() {
@@ -395,22 +418,14 @@
                 if (data.status === 'success') {
                     const st = data.lastStatus || 'Belum Absen';
                     badge.textContent = st;
-                    if (st === 'Clock In') {
-                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700';
-                    } else if (st === 'Clock Out') {
-                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700';
-                    } else if (st.includes('Pengajuan')) {
-                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700';
-                    } else {
-                        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
-                    }
+                    if (st === 'Clock In') badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700';
+                    else if (st === 'Clock Out') badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700';
+                    else if (st.includes('Pengajuan')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700';
+                    else badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
                 }
-            } catch (err) {
-                badge.textContent = 'Offline Mode';
-            }
+            } catch (err) { badge.textContent = 'Offline Mode'; }
         }
 
-        // ABSEN MODE SWITCHER
         function setAbsenMode(mode) {
             currentMode = mode;
             const btnIn = document.getElementById('btnClockIn');
@@ -418,21 +433,45 @@
             const btnPeng = document.getElementById('btnPengajuan');
             const secShift = document.getElementById('sectionShift');
             const secPeng = document.getElementById('sectionPengajuan');
+            const attachToggle = document.getElementById('attachTypeToggle');
 
             [btnIn, btnOut, btnPeng].forEach(b => b.className = "py-2.5 px-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-600 font-semibold text-xs flex flex-col items-center justify-center space-y-1 transition");
 
-            if (mode === 'Clock In') {
-                btnIn.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
+            if (mode === 'Clock In' || mode === 'Clock Out') {
+                if (mode === 'Clock In') btnIn.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
+                else btnOut.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
+                
                 secShift.classList.remove('hidden');
                 secPeng.classList.add('hidden');
-            } else if (mode === 'Clock Out') {
-                btnOut.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
-                secShift.classList.remove('hidden');
-                secPeng.classList.add('hidden');
+                attachToggle.classList.add('hidden');
+                setAttachType('camera'); // CLOCK IN/OUT WAJIB KAMERA
             } else {
                 btnPeng.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
                 secShift.classList.add('hidden');
                 secPeng.classList.remove('hidden');
+                attachToggle.classList.remove('hidden'); // PENGAJUAN BISA PILIH FILE / KAMERA
+            }
+        }
+
+        function setAttachType(type) {
+            currentAttachType = type;
+            const toggleCam = document.getElementById('toggleCamBtn');
+            const toggleFile = document.getElementById('toggleFileBtn');
+            const containerCam = document.getElementById('containerCamera');
+            const containerFile = document.getElementById('containerFileUpload');
+
+            if (type === 'camera') {
+                toggleCam.className = "px-2.5 py-1 rounded-md bg-white text-indigo-600 shadow-sm";
+                toggleFile.className = "px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900";
+                containerCam.classList.remove('hidden');
+                containerFile.classList.add('hidden');
+                startWebcam();
+            } else {
+                toggleFile.className = "px-2.5 py-1 rounded-md bg-white text-indigo-600 shadow-sm";
+                toggleCam.className = "px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900";
+                containerFile.classList.remove('hidden');
+                containerCam.classList.add('hidden');
+                stopWebcam(); // MATIKAN KAMERA SAAT BERALIH KE FILE
             }
         }
 
@@ -441,7 +480,6 @@
             document.getElementById('charCounter').textContent = `${val.length}/250`;
         }
 
-        // GEOLOCATION ENGINE
         function initGeolocation() {
             const gpsText = document.getElementById('gpsLocationText');
             gpsText.textContent = 'Mendeteksi Lokasi GPS...';
@@ -449,9 +487,7 @@
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(
                     pos => {
-                        const lat = pos.coords.latitude.toFixed(6);
-                        const lon = pos.coords.longitude.toFixed(6);
-                        currentGpsCoords = `${lat}, ${lon}`;
+                        currentGpsCoords = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
                         gpsText.textContent = `GPS Terkunci: ${currentGpsCoords}`;
                     },
                     err => {
@@ -460,20 +496,35 @@
                     },
                     { enableHighAccuracy: true, timeout: 10000 }
                 );
-            } else {
-                gpsText.textContent = 'Geolokasi Tidak Didukung Browser';
-            }
+            } else { gpsText.textContent = 'Geolokasi Tidak Didukung Browser'; }
         }
 
-        // CAMERA ENGINE (<150KB COMPRESSION)
+        // =================================================================
+        // CAMERA ENGINE - RELEASE HARDWARE LIGHT FIX
+        // =================================================================
         async function startWebcam() {
+            stopWebcam(); // PASTIIN KONEKSI LAMA MATI TOTAL SEBELUM START BARU
             const video = document.getElementById('webcam');
+            const canvas = document.getElementById('photoCanvas');
+
+            video.classList.remove('hidden');
+            canvas.classList.add('hidden');
+            document.getElementById('btnCapture').classList.remove('hidden');
+            document.getElementById('btnRetake').classList.add('hidden');
+
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
                 video.srcObject = videoStream;
-            } catch (err) {
-                console.warn('Gagal Buka Kamera Web:', err);
+            } catch (err) {}
+        }
+
+        function stopWebcam() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop()); // MATIKAN HARDWARE KAMERA LAPTOP/HP
+                videoStream = null;
             }
+            const video = document.getElementById('webcam');
+            if (video) video.srcObject = null;
         }
 
         function takeSnapshot() {
@@ -485,8 +536,11 @@
             canvas.height = 360;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Compress to JPEG Quality 0.6 (< 150KB)
+            // COMPRESS TO JPEG < 150KB
             capturedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+
+            // MATIKAN HARDWARE KAMERA LANGSUNG
+            stopWebcam();
 
             video.classList.add('hidden');
             canvas.classList.remove('hidden');
@@ -495,14 +549,45 @@
         }
 
         function resetCamera() {
-            const video = document.getElementById('webcam');
-            const canvas = document.getElementById('photoCanvas');
             capturedBase64 = '';
+            startWebcam();
+        }
 
-            canvas.classList.add('hidden');
-            video.classList.remove('hidden');
-            document.getElementById('btnCapture').classList.remove('hidden');
-            document.getElementById('btnRetake').classList.add('hidden');
+        // FILE UPLOAD HANDLERS
+        function handleFileSelected(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Ukuran file maksimal 5 MB!');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedFileObj = {
+                    base64: e.target.result,
+                    name: file.name,
+                    type: file.type
+                };
+
+                document.getElementById('fileNameText').textContent = file.name;
+                document.getElementById('filePreviewBadge').classList.remove('hidden');
+                document.getElementById('filePreviewBadge').classList.add('flex');
+
+                const icon = document.getElementById('fileIcon');
+                if (file.type.includes('pdf')) icon.className = "fa-solid fa-file-pdf text-red-500 text-base";
+                else if (file.type.includes('word') || file.type.includes('document')) icon.className = "fa-solid fa-file-word text-blue-500 text-base";
+                else icon.className = "fa-solid fa-file-image text-green-500 text-base";
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearSelectedFile() {
+            uploadedFileObj = null;
+            document.getElementById('filePicker').value = '';
+            document.getElementById('filePreviewBadge').classList.add('hidden');
+            document.getElementById('filePreviewBadge').classList.remove('flex');
         }
 
         // SUBMIT PRESENSI FORM
@@ -520,12 +605,26 @@
                 return;
             }
 
-            if (!capturedBase64) {
-                alert('Foto Selfie / Surat Bukti WAJIB diambil!');
-                return;
+            let fileDataToSend = '';
+            let fileNameToSend = '';
+            let fileMimeToSend = '';
+
+            if (currentAttachType === 'camera') {
+                if (!capturedBase64) {
+                    alert('Foto Selfie WAJIB diambil!');
+                    return;
+                }
+                fileDataToSend = capturedBase64;
+            } else {
+                if (!uploadedFileObj) {
+                    alert('File Dokumen Surat Bukti WAJIB diunggah!');
+                    return;
+                }
+                fileDataToSend = uploadedFileObj.base64;
+                fileNameToSend = uploadedFileObj.name;
+                fileMimeToSend = uploadedFileObj.type;
             }
 
-            // Lock UI Button (Race Condition Prevention)
             btnSubmit.disabled = true;
             btnText.textContent = 'MEMPROSES & MENGIRIM...';
 
@@ -538,7 +637,9 @@
                 jenisPengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
                 catatan: catatan || '-',
                 gps: currentGpsCoords,
-                fotoBase64: capturedBase64
+                fileBase64: fileDataToSend,
+                fileName: fileNameToSend,
+                fileMimeType: fileMimeToSend
             };
 
             try {
@@ -550,13 +651,12 @@
                 const data = await res.json();
 
                 if (data.status === 'success') {
-                    alert('🎉 Presensi Berhasil Tersimpan!');
+                    alert('🎉 Presensi / Pengajuan Berhasil Tersimpan!');
                     document.getElementById('textCatatan').value = '';
+                    clearSelectedFile();
                     resetCamera();
                     onKaryawanChange();
-                } else {
-                    alert('⚠️ Gagal: ' + data.message);
-                }
+                } else { alert('⚠️ Gagal: ' + data.message); }
             } catch (err) {
                 alert('❌ Terjadi Kesalahan Koneksi Server');
             } finally {
@@ -565,15 +665,10 @@
             }
         }
 
-        // =================================================================
-        // PORTAL HR ENGINE
-        // =================================================================
+        // HR PORTAL ENGINE
         async function verifyHrPin() {
             const pin = document.getElementById('inputHrPin').value;
-            if (!pin) {
-                alert('Masukkan PIN HR Admin!');
-                return;
-            }
+            if (!pin) return alert('Masukkan PIN HR Admin!');
 
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=verify_pin&pin=${encodeURIComponent(pin)}`);
@@ -583,12 +678,8 @@
                     document.getElementById('hrAuthCard').classList.add('hidden');
                     document.getElementById('hrDashboardContent').classList.remove('hidden');
                     loadHrLogs();
-                } else {
-                    alert('🔒 PIN HR Salah!');
-                }
-            } catch (err) {
-                alert('Gagal Verifikasi PIN');
-            }
+                } else { alert('🔒 PIN HR Salah!'); }
+            } catch (err) { alert('Gagal Verifikasi PIN'); }
         }
 
         async function loadHrLogs() {
@@ -596,7 +687,7 @@
             const end = document.getElementById('filterEndDate').value;
             const tbody = document.getElementById('tableHrLogsBody');
 
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500">Memuat Data Absensi dari Server...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500">Memuat Data Absensi...</td></tr>';
 
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=admin&startDate=${start}&endDate=${end}`);
@@ -606,10 +697,10 @@
                     document.getElementById('logCountBadge').textContent = `${data.logs.length} Data`;
                     renderHrLogsTable(data.logs);
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Tidak ada data ditemukan pada rentang tanggal ini.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Tidak ada data ditemukan.</td></tr>';
                 }
             } catch (err) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-500">Gagal mengambil data dari server.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-500">Gagal mengambil data.</td></tr>';
             }
         }
 
@@ -632,6 +723,11 @@
                 if (row.approvalStatus === 'DI ACC') badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">DI ACC</span>`;
                 if (row.approvalStatus === 'DI REJECT') badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">DI REJECT</span>`;
 
+                let fileBtnLabel = `<i class="fa-solid fa-image mr-1"></i> Lihat Foto`;
+                if (row.fotoUrl && (row.fotoUrl.includes('.pdf') || row.fotoUrl.includes('Pengajuan'))) {
+                    fileBtnLabel = `<i class="fa-solid fa-file-lines mr-1"></i> Lihat Dokumen`;
+                }
+
                 tr.innerHTML = `
                     <td class="p-3 font-mono text-[11px] whitespace-nowrap">${dateFormatted}</td>
                     <td class="p-3">
@@ -644,7 +740,7 @@
                     </td>
                     <td class="p-3">
                         ${row.fotoUrl && row.fotoUrl.startsWith('http') 
-                            ? `<button onclick="openLightbox('${row.fotoUrl}', '${row.karyawan}')" class="text-xs text-indigo-600 font-bold underline flex items-center"><i class="fa-solid fa-image mr-1"></i> Lihat Foto</button>` 
+                            ? `<a href="${row.fotoUrl}" target="_blank" class="text-xs text-indigo-600 font-bold underline flex items-center">${fileBtnLabel}</a>` 
                             : `<span class="text-gray-400 text-[10px]">-</span>`}
                     </td>
                     <td class="p-3">${badgeApproval}</td>
@@ -657,7 +753,6 @@
             });
         }
 
-        // HR APPROVAL ACTIONS
         async function approveAction(rowId) {
             if (!confirm('Apakah Anda yakin ingin menyetujui (ACC) pengajuan ini?')) return;
             await sendApprovalToBackend(rowId, 'Approved', '-');
@@ -676,10 +771,7 @@
 
         async function confirmRejectAction() {
             const reason = document.getElementById('inputRejectReason').value;
-            if (!reason) {
-                alert('Alasan penolakan wajib diisi!');
-                return;
-            }
+            if (!reason) return alert('Alasan penolakan wajib diisi!');
             const rId = selectedRowForReject;
             closeRejectModal();
             await sendApprovalToBackend(rId, 'Rejected', reason);
@@ -690,28 +782,18 @@
                 const res = await fetch(SCRIPT_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({
-                        action: 'update_approval',
-                        rowId: rowId,
-                        approvalStatus: status,
-                        alasanReject: reason
-                    })
+                    body: JSON.stringify({ action: 'update_approval', rowId: rowId, approvalStatus: status, alasanReject: reason })
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
                     alert('Status Approval Berhasil Diperbarui!');
                     loadHrLogs();
-                } else {
-                    alert('Gagal: ' + data.message);
-                }
-            } catch (err) {
-                alert('Kesalahan Server saat update approval');
-            }
+                } else alert('Gagal: ' + data.message);
+            } catch (err) { alert('Kesalahan Server saat update approval'); }
         }
 
-        // LIGHTBOX MODAL HANDLERS
         function openLightbox(url, title) {
-            document.getElementById('lightboxTitle').textContent = `Foto Bukti: ${title}`;
+            document.getElementById('lightboxTitle').textContent = `Preview File: ${title}`;
             document.getElementById('lightboxImg').src = url;
             document.getElementById('lightboxModal').classList.remove('hidden');
         }

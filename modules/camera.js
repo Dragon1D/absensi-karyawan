@@ -38,7 +38,7 @@ export const CameraService = {
         }
     },
 
-    // 2. Hentikan & Lepaskan Resource Hardware Kamera (Mencegah Kebocoran RAM/Hardware)
+    // 2. Hentikan & Lepaskan Resource Hardware Kamera
     stopWebcam(videoElementId) {
         if (this.videoStream) {
             this.videoStream.getTracks().forEach(track => track.stop());
@@ -50,7 +50,7 @@ export const CameraService = {
         }
     },
 
-    // 3. Tangkap Snapshot & Kompres Gambar via Canvas (Target Size < 100 KB)
+    // 3. Tangkap Snapshot & Kompres Gambar via Canvas (<100 KB)
     takeSnapshot(videoElementId, canvasElementId, btnCaptureId, btnRetakeId) {
         const video = document.getElementById(videoElementId);
         const canvas = document.getElementById(canvasElementId);
@@ -63,7 +63,7 @@ export const CameraService = {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Kompresi JPEG Kualitas 0.5 (Menghasilkan file ~50-80 KB)
+        // Kompresi JPEG Kualitas 0.5
         this.capturedBase64 = canvas.toDataURL('image/jpeg', 0.5);
 
         // Matikan sensor kamera setelah jepret
@@ -92,7 +92,7 @@ export const CameraService = {
         return this.capturedBase64;
     },
 
-    // 6. Bersihkan Objek Foto Ter simpan
+    // 6. Bersihkan Objek Foto
     clearPhoto() {
         this.capturedBase64 = '';
     }

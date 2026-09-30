@@ -56,4 +56,130 @@ export const ApiService = {
         try {
             const res = await fetch(SCRIPT_URL);
             const data = await res.json();
-            if (data.status === 'success' && Array.isArray(data.stores) && data.stores.length >
+            if (data.status === 'success' && Array.isArray(data.stores) && data.stores.length > 0) {
+                return { stores: data.stores, karyawan: data.karyawan || [] };
+            }
+        } catch (err) {}
+
+        try {
+            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+            const [resS, resE] = await Promise.all([
+                fetch(`${SUPABASE_URL}/rest/v1/stores?select=id,nama_store&order=id.asc`, { headers }),
+                fetch(`${SUPABASE_URL}/rest/v1/karyawan?select=id,store_id,nama_karyawan,jabatan&order=id.asc`, { headers })
+            ]);
+            const stores = await resS.json();
+            const karyawan = await resE.json();
+
+            if (Array.isArray(stores) && stores.length > 0) {
+                return {
+                    stores: stores.map(s => ({ id: s.id, nama: s.nama_store })),
+                    karyawan: karyawan.map(k => ({ id: k.id, storeId: k.store_id, nama: k.nama_karyawan, jabatan: k.jabatan }))
+                };
+            }
+        } catch (err) {}
+
+        return { stores: HARDCODED_STORES, karyawan: HARDCODED_KARYAWAN };
+    },
+
+    // 2. Check Status Absen Hari Ini (Strict Anti-Duplikat)
+    async checkTodayStatus(karyawanNama, storeNama) {
+        if (!karyawanNama || !storeNama) return 'Belum Dipilih';
+        const todayWib = getWibDateString();
+        try {
+            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(karyawanNama)}&nama_store=eq.${encodeURIComponent(storeNama)}&timestamp=gte.${todayWib}T00:00:00Z&select=status_absen&order=timestamp.desc&limit=1`;
+            
+            const res = await fetch(url, { headers });
+            const rows = await res.json();
+            if (Array.isArray(rows) && rows.length > 0) {
+                return rows[0].status_absen;
+            }
+        } catch (err) {}
+        return 'Belum Absen';
+    },
+
+    // 3. Direct Insert Supabase (<200ms)
+    async submitToSupabase(payload) {
+        try {
+            const headers = {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            };
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/log_absensi`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                const insertedRow = await res.json();
+                return (Array.isArray(insertedRow) && insertedRow.length > 0) ? insertedRow[0].id : null;
+            }
+        } catch (err) {}
+        return null;
+    },
+
+    // 4. Async Background Backup to Google Apps Script
+    submitToAppsScriptBackground(payload) {
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload)
+        }).catch(() => {});
+    },
+
+    // 5. Verify HR PIN
+    async verifyHrPin(pin) {
+        try {
+            const res = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: 'verify_pin', pin })
+            });
+            return await res.json();
+        } catch (err) {
+            return { status: 'error', message: 'Gagal verifikasi PIN' };
+        }
+    },
+
+    // 6. Fetch Logs untuk Portal HR
+    async fetchHrLogs(startDate, endDate) {
+        try {
+            const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startDate}T00:00:00Z&timestamp=lte.${endDate}T23:59:59Z&order=timestamp.asc`;
+            const res = await fetch(url, { headers });
+            return await res.json();
+        } catch (err) {
+            return [];
+        }
+    },
+
+    // 7. Update Approval HR Status
+    async updateApproval(payload) {
+        try {
+            const res = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: 'update_approval', ...payload })
+            });
+            return await res.json();
+        } catch (err) {
+            return { status: 'error', message: 'Gagal update approval' };
+        }
+    },
+
+    // 8. Reconcile Delete
+    async reconcileDelete() {
+        try {
+            const res = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ action: 'reconcile_delete' })
+            });
+            return await res.json();
+        } catch (err) {
+            return { status: 'error', message: 'Gagal sinkronisasi hapus' };
+        }
+    }
+};

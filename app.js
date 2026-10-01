@@ -238,6 +238,10 @@ window.clearSelectedFile = function() {
     document.getElementById('filePreviewBadge').classList.remove('flex');
 };
 
+if (!navigator.onLine) {
+    showToast('❌ Koneksi internet terputus! Periksa sinyal HP Anda.', 'error');
+    return;
+}
 window.submitPresensi = async function() {
     const storeNama = document.getElementById('selectStore').value;
     const karyawanNama = document.getElementById('selectKaryawan').value;

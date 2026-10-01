@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - DYNAMIC LEAVE DEDUCTION
+// MODULE: API SERVICE (modules/api.js) - STABLE APPROVAL & DYNAMIC LEAVE
 // Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
@@ -21,7 +21,8 @@ const HARDCODED_KARYAWAN = [
     { id: 'EMP-101', storeId: 'STORE-01', nama: 'Budi Santoso', jabatan: 'Senior Sales', sisaCuti: 12 },
     { id: 'EMP-102', storeId: 'STORE-01', nama: 'Siti Nurhaliza', jabatan: 'Sales Executive', sisaCuti: 10 },
     { id: 'EMP-201', storeId: 'STORE-02', nama: 'Andra Wijaya', jabatan: 'Senior Sales', sisaCuti: 8 },
-    { id: 'EMP-301', storeId: 'STORE-03', nama: 'Lukman Hakim', jabatan: 'Leader Store', sisaCuti: 12 }
+    { id: 'EMP-301', storeId: 'STORE-03', nama: 'Lukman Hakim', jabatan: 'Leader Store', sisaCuti: 12 },
+    { id: 'EMP-501', storeId: 'STORE-05', nama: 'Fiersa Besari', jabatan: 'Sales Executive', sisaCuti: 12 }
 ];
 
 export const ApiService = {
@@ -123,7 +124,6 @@ export const ApiService = {
         return data[0] ? data[0].id : null;
     },
 
-    // Pemotongan Sisa Cuti Dinamis berdasarkan jumlah hari
     async deductLeaveBalance(karyawanNama, jumlahHari = 1) {
         try {
             const cleanEmp = karyawanNama.trim();
@@ -208,8 +208,16 @@ export const ApiService = {
                 await this.deductLeaveBalance(karyawanNama, jumlahHari || 1);
             }
 
+            this.submitToAppsScriptBackground({
+                action: 'update_approval',
+                rowId: rowId,
+                approvalStatus: approvalStatus,
+                alasanReject: alasanReject || '-'
+            });
+
             return res.ok;
         } catch (err) {
+            console.error("Update approval error:", err);
             return false;
         }
     }

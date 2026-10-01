@@ -1,5 +1,5 @@
 // =========================================================================
-// APP CONTROLLER (app.js)
+// APP CONTROLLER (app.js) - WITH ANOMALY DETECTION & HR BADGING
 // Orchestrates UI Event Handlers & Integrates ES Modules
 // =========================================================================
 
@@ -58,7 +58,7 @@ async function initApp() {
     masterKaryawan = data.karyawan || [];
     populateStoreDropdown();
 
-    // Init GPS Saja (Kamera OFF secara default)
+    // Init GPS (Kamera OFF secara default)
     GeoService.initGeolocation('gpsLocationText');
 }
 
@@ -91,8 +91,6 @@ window.switchTab = function(tab) {
         hrSec.classList.remove('hidden');
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
-        
-        // Mati kamera saat pindah ke Tab HR
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
     }
 };
@@ -206,7 +204,7 @@ window.initGeolocation = function() {
 };
 
 // -------------------------------------------------------------------------
-// CAMERA HANDLERS (ENTERPRISE WATERMARK & ASYNC GUARD)
+// CAMERA HANDLERS
 // -------------------------------------------------------------------------
 window.toggleCameraPower = async function() {
     await CameraService.toggleCamera('webcam', 'btnToggleCamera');
@@ -255,6 +253,9 @@ window.clearSelectedFile = function() {
     document.getElementById('filePreviewBadge').classList.remove('flex');
 };
 
+// -------------------------------------------------------------------------
+// SUBMIT PRESENSI WITH ANOMALY DETECTION LOGIC
+// -------------------------------------------------------------------------
 window.submitPresensi = async function() {
     const storeNama = document.getElementById('selectStore').value;
     const karyawanNama = document.getElementById('selectKaryawan').value;
@@ -292,7 +293,13 @@ window.submitPresensi = async function() {
     btnSubmit.disabled = true;
     btnText.textContent = 'MEMVALIDASI...';
 
+    // CEK ANOMALI LUPA CLOCK IN / CLOCK OUT
     const lastStatus = await ApiService.checkTodayStatus(karyawanNama, storeNama);
+    let isAnomaly = false;
+    let finalStatusFormatted = (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan}` : currentMode;
+    let approvalDefault = finalStatusFormatted.includes("Pengajuan") ? "Pending" : "Auto-Approved";
+
+    // SKENARIO A: Mencoba Clock In padahal SUDAH Clock In
     if (currentMode === 'Clock In' && (lastStatus === 'Clock In' || lastStatus.includes('Clock In'))) {
         showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock In hari ini!`, 'error');
         btnSubmit.disabled = false;
@@ -300,23 +307,30 @@ window.submitPresensi = async function() {
         return;
     }
 
+    // SKENARIO B: Mencoba Clock Out padahal BELUM Clock In (Lupa Clock In)
+    if (currentMode === 'Clock Out' && lastStatus === 'Belum Absen') {
+        isAnomaly = true;
+        finalStatusFormatted = 'Clock Out (Tanpa Clock In)';
+        approvalDefault = 'Anomali - Butuh Koreksi';
+        showToast('⚠️ Anda Clock Out tanpa Clock In! Presensi dikirim dengan catatan Anomali.', 'error');
+    }
+
     btnText.textContent = 'MENGIRIM...';
     const isoTimestamp = new Date().toISOString();
-    const statusFormatted = (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan}` : currentMode;
-    const approvalDefault = statusFormatted.includes("Pengajuan") ? "Pending" : "Auto-Approved";
 
     const supabasePayload = {
         timestamp: isoTimestamp,
         nama_store: storeNama,
         nama_karyawan: karyawanNama,
         jam_shift: (currentMode === 'Pengajuan') ? '-' : shiftNama,
-        status_absen: statusFormatted,
+        status_absen: finalStatusFormatted,
         jenis_pengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
-        catatan_keterangan: catatan || '-',
+        catatan_keterangan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In awal' : '-'),
         lokasi_gps: GeoService.getCoords(),
         foto_drive_url: "Uploading Drive...",
         status_approval_hr: approvalDefault,
-        alasan_penolakan_hr: "-"
+        alasan_penolakan_hr: "-",
+        is_anomaly: isAnomaly
     };
 
     const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
@@ -336,9 +350,9 @@ window.submitPresensi = async function() {
         storeNama: storeNama,
         karyawanNama: karyawanNama,
         shiftNama: (currentMode === 'Pengajuan') ? '-' : shiftNama,
-        status: statusFormatted,
+        status: finalStatusFormatted,
         jenisPengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
-        catatan: catatan || '-',
+        catatan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In awal' : '-'),
         gps: GeoService.getCoords(),
         fileBase64: fileDataToSend,
         fileName: fileNameToSend,
@@ -347,7 +361,7 @@ window.submitPresensi = async function() {
 };
 
 // -------------------------------------------------------------------------
-// PORTAL HR HANDLERS
+// PORTAL HR HANDLERS WITH ANOMALY BADGES
 // -------------------------------------------------------------------------
 window.verifyHrPin = async function() {
     const pin = document.getElementById('inputHrPin').value;
@@ -360,15 +374,6 @@ window.verifyHrPin = async function() {
         window.loadHrLogs();
         showToast('Login HR Berhasil!', 'success');
     } else showToast('🔒 PIN HR Salah!', 'error');
-};
-
-window.reconcileDeletedRows = async function() {
-    showToast('Memproses sinkronisasi hapus...', 'success');
-    const res = await ApiService.reconcileDelete();
-    if (res.status === 'success') {
-        showToast(res.message, 'success');
-        window.loadHrLogs();
-    }
 };
 
 window.loadHrLogs = async function() {
@@ -394,9 +399,15 @@ function renderHrLogsTable(logs) {
         tr.className = "hover:bg-gray-50 transition border-b border-gray-100";
         const dateFormatted = new Date(row.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
 
+        // BADGE APPROVAL & ANOMALI DETECTOR
         let badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600">${escapeHtml(row.status_approval_hr)}</span>`;
-        if (row.status_approval_hr === 'DI ACC') badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">DI ACC</span>`;
-        if (row.status_approval_hr === 'DI REJECT') badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">DI REJECT</span>`;
+        if (row.is_anomaly || row.status_approval_hr.includes('Anomali')) {
+            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">⚠️ ANOMALI</span>`;
+        } else if (row.status_approval_hr === 'DI ACC' || row.status_approval_hr === 'Auto-Approved') {
+            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">DI ACC</span>`;
+        } else if (row.status_approval_hr === 'DI REJECT') {
+            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">DI REJECT</span>`;
+        }
 
         let fileBtnHtml = `<span class="text-gray-400 text-[10px]">-</span>`;
         if (row.foto_drive_url && row.foto_drive_url.startsWith('http')) {
@@ -410,7 +421,7 @@ function renderHrLogsTable(logs) {
                 <div class="text-[10px] text-gray-500">${escapeHtml(row.nama_store)}</div>
             </td>
             <td class="p-3">
-                <div class="font-semibold text-indigo-600">${escapeHtml(row.status_absen)}</div>
+                <div class="font-semibold ${row.is_anomaly ? 'text-amber-700 font-bold' : 'text-indigo-600'}">${escapeHtml(row.status_absen)}</div>
                 <div class="text-[10px] text-gray-400">${escapeHtml(row.jam_shift)}</div>
             </td>
             <td class="p-3">${fileBtnHtml}</td>
@@ -425,7 +436,7 @@ function renderHrLogsTable(logs) {
 }
 
 window.approveAction = async function(recordId, karyawanNama, timestamp) {
-    if (!confirm(`ACC pengajuan ${karyawanNama}?`)) return;
+    if (!confirm(`ACC pengajuan / koreksi ${karyawanNama}?`)) return;
     await ApiService.updateApproval({ rowId: recordId, karyawanNama, timestamp, approvalStatus: 'Approved', alasanReject: '-' });
     showToast('Approval Berhasil!', 'success');
     window.loadHrLogs();

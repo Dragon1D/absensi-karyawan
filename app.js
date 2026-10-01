@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - STRICT PENGAJUAN & DYNAMIC LEAVE PREVIEW
-// Orchestrates UI Event Handlers, Dynamic Attachments & HR Approval
+// APP CONTROLLER (app.js) - STRICT FORM & INPUT LOCKDOWN
+// Orchestrates UI Event Handlers, Dynamic Attachments & Real-time State Lock
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -86,6 +86,7 @@ window.switchTab = function(tab) {
         hrSec.classList.add('hidden');
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
+        window.onKaryawanChange();
     } else {
         salesSec.classList.add('hidden');
         hrSec.classList.remove('hidden');
@@ -207,27 +208,46 @@ window.calculateLeavePreview = function() {
     }
 };
 
+// EVALUASI & KUNCI ELEMEN UI BERDASARKAN STATUS SALES
 function evaluateUiState(detail) {
     const badge = document.getElementById('badgeLiveStatus');
     const selectShift = document.getElementById('selectShift');
+    const selectJenisPengajuan = document.getElementById('selectJenisPengajuan');
+    const inputJumlahHari = document.getElementById('inputJumlahHari');
+    const textCatatan = document.getElementById('textCatatan');
     const st = detail.status;
 
+    // Reset default unlocked state
+    if (selectShift) {
+        selectShift.disabled = false;
+        selectShift.classList.remove('bg-gray-200', 'cursor-not-allowed');
+    }
+    if (selectJenisPengajuan) {
+        selectJenisPengajuan.disabled = false;
+        selectJenisPengajuan.classList.remove('bg-gray-200', 'cursor-not-allowed');
+    }
+    if (inputJumlahHari) {
+        inputJumlahHari.disabled = false;
+        inputJumlahHari.classList.remove('bg-gray-200', 'cursor-not-allowed');
+    }
+    if (textCatatan) {
+        textCatatan.disabled = false;
+        textCatatan.classList.remove('bg-gray-200', 'cursor-not-allowed');
+    }
+
+    // 1. Badge Text & Color
     badge.textContent = st === 'OFFLINE_UNKNOWN' ? 'Offline' : st;
     if (st === 'Clock In' || st.includes('Clock In')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700';
     else if (st === 'Clock Out' || st.includes('Clock Out')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700';
     else if (st.includes('Pengajuan')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700';
     else badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
 
+    // 2. Kunci Dropdown Shift saat Clock Out
     if (currentMode === 'Clock Out' && detail.hasClockIn && detail.clockInShift) {
         if (selectShift) {
             selectShift.value = detail.clockInShift;
             selectShift.disabled = true;
             selectShift.classList.add('bg-gray-200', 'cursor-not-allowed');
-        }
-    } else {
-        if (selectShift) {
-            selectShift.disabled = false;
-            selectShift.classList.remove('bg-gray-200', 'cursor-not-allowed');
         }
     }
 
@@ -237,7 +257,21 @@ function evaluateUiState(detail) {
     const btnSubmit = document.getElementById('btnSubmitPresensi');
     const cameraLockNotice = document.getElementById('cameraLockNotice');
 
+    // 3. KUNCI TOTAL FORM PENGAJUAN (DURASI HARI, DOKUMEN & TOMBOL)
     if (currentMode === 'Pengajuan' && detail.hasPengajuan) {
+        if (selectJenisPengajuan) {
+            selectJenisPengajuan.disabled = true;
+            selectJenisPengajuan.classList.add('bg-gray-200', 'cursor-not-allowed');
+        }
+        if (inputJumlahHari) {
+            inputJumlahHari.disabled = true;
+            inputJumlahHari.classList.add('bg-gray-200', 'cursor-not-allowed');
+        }
+        if (textCatatan) {
+            textCatatan.disabled = true;
+            textCatatan.classList.add('bg-gray-200', 'cursor-not-allowed');
+        }
+
         if (containerFile) containerFile.classList.add('hidden');
         if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (containerCam) containerCam.classList.add('hidden');
@@ -246,7 +280,7 @@ function evaluateUiState(detail) {
             cameraLockNotice.innerHTML = `
                 <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1">
                     <div class="text-xs font-bold text-amber-800"><i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Pengajuan Sudah Terkirim Hari Ini</div>
-                    <div class="text-[11px] text-amber-700">Pengajuan <strong>${detail.pengajuanType || 'Cuti/Sakit'}</strong> Anda telah diterima dan sedang dalam proses persetujuan oleh HR Admin (Status: <strong>${detail.approvalStatus || 'Pending'}</strong>).</div>
+                    <div class="text-[11px] text-amber-700">Pengajuan <strong>${detail.pengajuanType || 'Cuti/Sakit'}</strong> Anda telah diterima (Status: <strong>${detail.approvalStatus || 'Pending'}</strong>). Form pengajuan telah dikunci.</div>
                 </div>
             `;
             cameraLockNotice.classList.remove('hidden');
@@ -254,6 +288,10 @@ function evaluateUiState(detail) {
         if (btnSubmit) btnSubmit.disabled = true;
 
     } else if (currentMode === 'Clock In' && detail.hasClockIn) {
+        if (textCatatan) {
+            textCatatan.disabled = true;
+            textCatatan.classList.add('bg-gray-200', 'cursor-not-allowed');
+        }
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
         if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (containerCam) containerCam.classList.add('hidden');
@@ -269,6 +307,10 @@ function evaluateUiState(detail) {
         if (btnSubmit) btnSubmit.disabled = true;
 
     } else if (currentMode === 'Clock Out' && detail.hasClockOut) {
+        if (textCatatan) {
+            textCatatan.disabled = true;
+            textCatatan.classList.add('bg-gray-200', 'cursor-not-allowed');
+        }
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
         if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (containerCam) containerCam.classList.add('hidden');
@@ -419,7 +461,7 @@ window.clearSelectedFile = function() {
 };
 
 // -------------------------------------------------------------------------
-// SUBMIT PRESENSI WITH DYNAMIC LEAVE VALIDATION & PENGAJUAN LOCK
+// SUBMIT PRESENSI WITH DYNAMIC LEAVE VALIDATION & FORM LOCK
 // -------------------------------------------------------------------------
 window.submitPresensi = async function() {
     if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
@@ -457,7 +499,6 @@ window.submitPresensi = async function() {
         return;
     }
 
-    // VALIDASI DURASI HARI CUTI vs SISA CUTI
     let jumlahHariPengajuan = 1;
     if (currentMode === 'Pengajuan' && jenisPengajuan.includes('Cuti')) {
         const inputHariElem = document.getElementById('inputJumlahHari');
@@ -618,13 +659,17 @@ function renderHrLogsTable(logs) {
         tr.className = "hover:bg-gray-50 transition border-b border-gray-100";
         const dateFormatted = new Date(row.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) + " WIB";
 
+        const isApproved = (row.status_approval_hr === 'DI ACC' || row.status_approval_hr === 'Auto-Approved');
+        const isRejected = (row.status_approval_hr === 'DI REJECT');
+        const isAnomaly = (row.is_anomaly || (row.status_approval_hr && row.status_approval_hr.includes('Anomali')));
+
         let badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">PENDING</span>`;
-        if (row.is_anomaly || (row.status_approval_hr && row.status_approval_hr.includes('Anomali'))) {
+        if (isAnomaly) {
             badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-sm">⚠️ ANOMALI</span>`;
-        } else if (row.status_approval_hr === 'DI ACC' || row.status_approval_hr === 'Auto-Approved') {
-            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">DI ACC</span>`;
-        } else if (row.status_approval_hr === 'DI REJECT') {
-            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">DI REJECT</span>`;
+        } else if (isApproved) {
+            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-300">DI ACC</span>`;
+        } else if (isRejected) {
+            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-300">DI REJECT</span>`;
         }
 
         let fileBtnHtml = `<span class="text-gray-400 text-[10px]">-</span>`;
@@ -634,11 +679,21 @@ function renderHrLogsTable(logs) {
             fileBtnHtml = `<span class="text-amber-600 text-[10px] font-semibold animate-pulse">Proses Drive...</span>`;
         }
 
-        // Ekstrak jumlah hari dari string jenis_pengajuan jika ada
         let extractedDays = 1;
         if (row.jenis_pengajuan && row.jenis_pengajuan.includes('Hari')) {
             const match = row.jenis_pengajuan.match(/\((\d+)\s*Hari\)/);
             if (match) extractedDays = parseInt(match[1]);
+        }
+
+        let aksiHtml = `
+            <button onclick="approveAction(${row.id}, '${escapeHtml(row.nama_karyawan)}', '${escapeHtml(row.jenis_pengajuan)}', ${extractedDays})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
+            <button onclick="openRejectModal(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
+        `;
+
+        if (isApproved) {
+            aksiHtml = `<span class="inline-flex items-center text-green-600 font-bold text-[11px]"><i class="fa-solid fa-circle-check mr-1"></i> Selesai (ACC)</span>`;
+        } else if (isRejected) {
+            aksiHtml = `<span class="inline-flex items-center text-red-600 font-bold text-[11px]"><i class="fa-solid fa-circle-xmark mr-1"></i> Ditolak</span>`;
         }
 
         tr.innerHTML = `
@@ -648,15 +703,12 @@ function renderHrLogsTable(logs) {
                 <div class="text-[10px] text-gray-500">${escapeHtml(row.nama_store)}</div>
             </td>
             <td class="p-3">
-                <div class="font-semibold ${row.is_anomaly ? 'text-amber-700 font-bold' : 'text-indigo-600'}">${escapeHtml(row.status_absen)}</div>
+                <div class="font-semibold ${isAnomaly ? 'text-amber-700 font-bold' : 'text-indigo-600'}">${escapeHtml(row.status_absen)}</div>
                 <div class="text-[10px] text-gray-400">${escapeHtml(row.jam_shift)}</div>
             </td>
             <td class="p-3">${fileBtnHtml}</td>
             <td class="p-3">${badgeApproval}</td>
-            <td class="p-3 text-center space-x-1 whitespace-nowrap">
-                <button onclick="approveAction(${row.id}, '${escapeHtml(row.nama_karyawan)}', '${escapeHtml(row.jenis_pengajuan)}', ${extractedDays})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
-                <button onclick="openRejectModal(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
-            </td>
+            <td class="p-3 text-center whitespace-nowrap">${aksiHtml}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -664,9 +716,19 @@ function renderHrLogsTable(logs) {
 
 window.approveAction = async function(recordId, karyawanNama, jenisPengajuan, jumlahHari) {
     if (!confirm(`ACC pengajuan / koreksi (${jumlahHari || 1} Hari) untuk ${karyawanNama}?`)) return;
-    await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan, jumlahHari });
-    showToast('Approval Berhasil & Sisa Cuti Diperbarui!', 'success');
-    window.loadHrLogs();
+    
+    const ok = await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan, jumlahHari });
+    
+    if (ok) {
+        const freshData = await ApiService.fetchMasterData();
+        masterKaryawan = freshData.karyawan || [];
+        localEmployeeDetailsCache = {};
+
+        showToast('🎉 Approval Berhasil & Sisa Cuti Diperbarui!', 'success');
+        window.loadHrLogs();
+    } else {
+        showToast('❌ Gagal memproses approval!', 'error');
+    }
 };
 
 window.openRejectModal = function(recordId, karyawanNama) {
@@ -683,9 +745,16 @@ window.closeRejectModal = function() {
 window.confirmRejectAction = async function() {
     const reason = document.getElementById('inputRejectReason').value;
     if (!reason.trim()) return showToast('Alasan penolakan wajib diisi!', 'error');
+    
     const target = selectedRowForReject;
     window.closeRejectModal();
-    await ApiService.updateApproval({ rowId: target.id, karyawanNama: target.nama, approvalStatus: 'Rejected', alasanReject: reason });
-    showToast('Penolakan Berhasil!', 'success');
-    window.loadHrLogs();
+    
+    const ok = await ApiService.updateApproval({ rowId: target.id, karyawanNama: target.nama, approvalStatus: 'Rejected', alasanReject: reason });
+    
+    if (ok) {
+        showToast('Penolakan Berhasil!', 'success');
+        window.loadHrLogs();
+    } else {
+        showToast('❌ Gagal memproses penolakan!', 'error');
+    }
 };

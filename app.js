@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - PRODUCTION READY v8.0
-// Orchestrates UI Event Handlers, Anomaly Detection & Security Safeguards
+// APP CONTROLLER (app.js) - WITH FILE-ONLY PENGAJUAN & SISA CUTI DISPLAY
+// Orchestrates UI Event Handlers, Dynamic Attachments & Leave Management
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -8,7 +8,7 @@ import { CameraService } from './modules/camera.js';
 import { GeoService } from './modules/geo.js';
 
 // -------------------------------------------------------------------------
-// HELPER FUNCTIONS & SANITIZATION
+// HELPER FUNCTIONS
 // -------------------------------------------------------------------------
 function getWibDateString(date = new Date()) {
     const wibDate = new Date(date.getTime() + (7 * 60 * 60 * 1000));
@@ -51,6 +51,7 @@ let uploadedFileObj = null;
 let selectedRowForReject = null;
 let isCheckingStatus = false;
 let hrLogsCache = [];
+let selectedEmployeeSisaCuti = 12;
 
 // -------------------------------------------------------------------------
 // INITIALIZER
@@ -69,9 +70,8 @@ async function initApp() {
     // Init GPS
     GeoService.initGeolocation('gpsLocationText');
 
-    // Event Listener Online/Offline Status
-    window.addEventListener('online', () => showToast('🌐 Koneksi internet terhubung kembali.', 'success'));
-    window.addEventListener('offline', () => showToast('⚠️ Koneksi internet terputus!', 'error'));
+    window.addEventListener('online', () => showToast('🌐 Koneksi terhubung kembali.', 'success'));
+    window.addEventListener('offline', () => showToast('⚠️ Koneksi terputus!', 'error'));
 }
 
 if (document.readyState === 'loading') {
@@ -125,9 +125,9 @@ window.onStoreChange = function() {
     const selectKaryawan = document.getElementById('selectKaryawan');
     selectKaryawan.innerHTML = '<option value="">-- Pilih Nama Sales --</option>';
 
-    // Reset Pilihan Karyawan
     document.getElementById('badgeLiveStatus').textContent = 'Belum Dipilih';
     document.getElementById('badgeLiveStatus').className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
+    if (document.getElementById('badgeSisaCuti')) document.getElementById('badgeSisaCuti').classList.add('hidden');
 
     const selectedStoreObj = masterStores.find(s => s.nama.trim() === selectedStoreNama.trim());
     const storeId = selectedStoreObj ? selectedStoreObj.id : null;
@@ -142,19 +142,31 @@ window.onStoreChange = function() {
 };
 
 window.onKaryawanChange = async function() {
-    const karyawan = document.getElementById('selectKaryawan').value;
+    const karyawanNama = document.getElementById('selectKaryawan').value;
     const store = document.getElementById('selectStore').value;
     const badge = document.getElementById('badgeLiveStatus');
+    const badgeCuti = document.getElementById('badgeSisaCuti');
 
-    if (!karyawan) {
+    if (!karyawanNama) {
         badge.textContent = 'Belum Dipilih';
         badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
+        if (badgeCuti) badgeCuti.classList.add('hidden');
         return;
+    }
+
+    // TAMPILKAN SISA CUTI REALTIME
+    const empObj = masterKaryawan.find(k => k.nama.trim() === karyawanNama.trim());
+    selectedEmployeeSisaCuti = (empObj && empObj.sisaCuti !== undefined) ? empObj.sisaCuti : 12;
+
+    if (badgeCuti) {
+        badgeCuti.textContent = `🌴 Sisa Cuti: ${selectedEmployeeSisaCuti} Hari`;
+        badgeCuti.className = `px-2.5 py-1 rounded-full text-xs font-bold ${selectedEmployeeSisaCuti > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-red-100 text-red-700'}`;
+        badgeCuti.classList.remove('hidden');
     }
 
     isCheckingStatus = true;
     badge.textContent = 'Mengecek...';
-    const st = await ApiService.checkTodayStatus(karyawan, store);
+    const st = await ApiService.checkTodayStatus(karyawanNama, store);
     isCheckingStatus = false;
 
     badge.textContent = st === 'OFFLINE_UNKNOWN' ? 'Offline' : st;
@@ -183,31 +195,27 @@ window.setAbsenMode = function(mode) {
         secShift.classList.remove('hidden');
         secPeng.classList.add('hidden');
         attachToggle.classList.add('hidden');
-        window.setAttachType('camera');
+        window.setAttachType('camera'); // Wajib Kamera untuk Clock In/Out
     } else {
-        btnPeng.className = "py-2.5 px-3 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
+        // MODE PENGAJUAN: WAJIB FILE ONLY (Tutup Kamera)
+        btnPeng.className = "py-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
         secShift.classList.add('hidden');
         secPeng.classList.remove('hidden');
-        attachToggle.classList.remove('hidden');
+        attachToggle.classList.add('hidden'); // Sembunyikan toggle, paksakan file mode
         if (document.getElementById('selectShift')) document.getElementById('selectShift').value = '-';
+        window.setAttachType('file'); // Paksa Mode File Upload
     }
 };
 
 window.setAttachType = function(type) {
     currentAttachType = type;
-    const toggleCam = document.getElementById('toggleCamBtn');
-    const toggleFile = document.getElementById('toggleFileBtn');
     const containerCam = document.getElementById('containerCamera');
     const containerFile = document.getElementById('containerFileUpload');
 
     if (type === 'camera') {
-        toggleCam.className = "px-2.5 py-1 rounded-md bg-white text-indigo-600 shadow-sm";
-        toggleFile.className = "px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900";
         containerCam.classList.remove('hidden');
         containerFile.classList.add('hidden');
     } else {
-        toggleFile.className = "px-2.5 py-1 rounded-md bg-white text-indigo-600 shadow-sm";
-        toggleCam.className = "px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900";
         containerFile.classList.remove('hidden');
         containerCam.classList.add('hidden');
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
@@ -225,7 +233,7 @@ window.initGeolocation = function() {
 };
 
 // -------------------------------------------------------------------------
-// CAMERA HANDLERS
+// CAMERA & FILE HANDLERS
 // -------------------------------------------------------------------------
 window.toggleCameraPower = async function() {
     await CameraService.toggleCamera('webcam', 'btnToggleCamera');
@@ -254,7 +262,14 @@ window.handleFileSelected = function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Pre-validation size
+    // Validasi Ekstensi File Dokumen
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+        showToast('Format file harus PDF, JPG, atau PNG!', 'error');
+        event.target.value = '';
+        return;
+    }
+
     if (file.size > 2 * 1024 * 1024) {
         showToast('Ukuran file maksimal 2 MB!', 'error');
         event.target.value = '';
@@ -279,20 +294,11 @@ window.clearSelectedFile = function() {
 };
 
 // -------------------------------------------------------------------------
-// SUBMIT PRESENSI WITH ANOMALY DETECTION & SECURITY SAFEGUARDS
+// SUBMIT PRESENSI WITH LEAVE VALIDATION
 // -------------------------------------------------------------------------
 window.submitPresensi = async function() {
-    // Guard 1: Offline check
-    if (!navigator.onLine) {
-        showToast('⚠️ Koneksi terputus! Periksa sinyal HP Anda.', 'error');
-        return;
-    }
-
-    // Guard 2: Waiting for status check
-    if (isCheckingStatus) {
-        showToast('Mohon tunggu, sedang memvalidasi data...', 'error');
-        return;
-    }
+    if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
+    if (isCheckingStatus) return showToast('Mohon tunggu validasi...', 'error');
 
     const storeNama = document.getElementById('selectStore').value;
     const karyawanNama = document.getElementById('selectKaryawan').value;
@@ -307,11 +313,12 @@ window.submitPresensi = async function() {
         return;
     }
 
-    // Guard 3: GPS check
-    const currentGps = GeoService.getCoords();
-    if (!currentGps || currentGps === '-') {
-        showToast('⚠️️ GPS belum terdeteksi. Klik Refresh GPS!', 'error');
-        return;
+    // VALIDASI SISA CUTI TAHUNAN
+    if (currentMode === 'Pengajuan' && jenisPengajuan.includes('Cuti')) {
+        if (selectedEmployeeSisaCuti <= 0) {
+            showToast(`❌ Sisa Cuti Tahunan ${karyawanNama} sudah habis (0 Hari)!`, 'error');
+            return;
+        }
     }
 
     let fileDataToSend = '';
@@ -320,21 +327,14 @@ window.submitPresensi = async function() {
 
     if (currentAttachType === 'camera') {
         fileDataToSend = CameraService.getPhotoBase64();
-        if (!fileDataToSend) {
-            showToast('Foto Selfie WAJIB diambil!', 'error');
-            return;
-        }
+        if (!fileDataToSend) return showToast('Foto Selfie WAJIB diambil!', 'error');
     } else {
-        if (!uploadedFileObj) {
-            showToast('File Surat Dokter / Dokumen WAJIB diunggah!', 'error');
-            return;
-        }
+        if (!uploadedFileObj) return showToast('Lampiran Berkas / Dokumen WAJIB diunggah!', 'error');
         fileDataToSend = uploadedFileObj.base64;
         fileNameToSend = uploadedFileObj.name;
         fileMimeToSend = uploadedFileObj.type;
     }
 
-    // Lock UI (Double-submission protection)
     btnSubmit.disabled = true;
     btnText.textContent = 'MEMVALIDASI...';
 
@@ -344,18 +344,16 @@ window.submitPresensi = async function() {
         let finalStatusFormatted = (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan}` : currentMode;
         let approvalDefault = finalStatusFormatted.includes("Pengajuan") ? "Pending" : "Auto-Approved";
 
-        // SKENARIO A: Duplikat Clock In
         if (currentMode === 'Clock In' && (lastStatus === 'Clock In' || lastStatus.includes('Clock In'))) {
             showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock In hari ini!`, 'error');
             return;
         }
 
-        // SKENARIO B: Anomali Lupa Clock In
         if (currentMode === 'Clock Out' && lastStatus === 'Belum Absen') {
             isAnomaly = true;
             finalStatusFormatted = 'Clock Out (Tanpa Clock In)';
             approvalDefault = 'Anomali - Butuh Koreksi';
-            showToast('⚠️ Anda Clock Out tanpa Clock In! Presensi dikirim sebagai Anomali.', 'error');
+            showToast('⚠️ Clock Out tanpa Clock In! Dikirim sebagai Anomali.', 'error');
         }
 
         btnText.textContent = 'MENGIRIM...';
@@ -368,8 +366,8 @@ window.submitPresensi = async function() {
             jam_shift: (currentMode === 'Pengajuan') ? '-' : shiftNama,
             status_absen: finalStatusFormatted,
             jenis_pengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
-            catatan_keterangan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In awal' : '-'),
-            lokasi_gps: currentGps,
+            catatan_keterangan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In' : '-'),
+            lokasi_gps: GeoService.getCoords(),
             foto_drive_url: "Uploading Drive...",
             status_approval_hr: approvalDefault,
             alasan_penolakan_hr: "-",
@@ -378,13 +376,12 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        showToast('🎉 Presensi Berhasil Tersimpan!', 'success');
+        showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
         document.getElementById('textCatatan').value = '';
         window.clearSelectedFile();
         window.resetCamera();
         await window.onKaryawanChange();
 
-        // Background GAS Sync
         ApiService.submitToAppsScriptBackground({
             supabaseId: createdRecordId,
             timestamp: isoTimestamp,
@@ -393,8 +390,8 @@ window.submitPresensi = async function() {
             shiftNama: (currentMode === 'Pengajuan') ? '-' : shiftNama,
             status: finalStatusFormatted,
             jenisPengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
-            catatan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In awal' : '-'),
-            gps: currentGps,
+            catatan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In' : '-'),
+            gps: GeoService.getCoords(),
             fileBase64: fileDataToSend,
             fileName: fileNameToSend,
             fileMimeType: fileMimeToSend,
@@ -402,7 +399,7 @@ window.submitPresensi = async function() {
         });
 
     } catch (err) {
-        showToast('Gagal mengirim presensi: ' + err.message, 'error');
+        showToast('Gagal mengirim: ' + err.message, 'error');
     } finally {
         btnSubmit.disabled = false;
         btnText.textContent = 'KIRIM PRESENSI SEKARANG';
@@ -410,7 +407,7 @@ window.submitPresensi = async function() {
 };
 
 // -------------------------------------------------------------------------
-// PORTAL HR HANDLERS WITH ANOMALY BADGES & SEARCH FILTER
+// PORTAL HR HANDLERS
 // -------------------------------------------------------------------------
 window.verifyHrPin = async function() {
     const pin = document.getElementById('inputHrPin').value;
@@ -450,11 +447,8 @@ window.filterHrLogs = function() {
         document.getElementById('logCountBadge').textContent = `${filtered.length} Data`;
     }
 
-    if (filtered.length > 0) {
-        renderHrLogsTable(filtered);
-    } else {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Tidak ada data ditemukan.</td></tr>';
-    }
+    if (filtered.length > 0) renderHrLogsTable(filtered);
+    else tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Tidak ada data.</td></tr>';
 };
 
 function renderHrLogsTable(logs) {
@@ -465,10 +459,9 @@ function renderHrLogsTable(logs) {
         tr.className = "hover:bg-gray-50 transition border-b border-gray-100";
         const dateFormatted = new Date(row.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) + " WIB";
 
-        // BADGE APPROVAL & ANOMALI DETECTOR
         let badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600">${escapeHtml(row.status_approval_hr)}</span>`;
         if (row.is_anomaly || (row.status_approval_hr && row.status_approval_hr.includes('Anomali'))) {
-            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-sm">⚠️ ANOMALI</span>`;
+            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-sm">⚠️️ ANOMALI</span>`;
         } else if (row.status_approval_hr === 'DI ACC' || row.status_approval_hr === 'Auto-Approved') {
             badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">DI ACC</span>`;
         } else if (row.status_approval_hr === 'DI REJECT') {
@@ -477,7 +470,7 @@ function renderHrLogsTable(logs) {
 
         let fileBtnHtml = `<span class="text-gray-400 text-[10px]">-</span>`;
         if (row.foto_drive_url && row.foto_drive_url.startsWith('http')) {
-            fileBtnHtml = `<a href="${escapeHtml(row.foto_drive_url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 font-bold underline flex items-center"><i class="fa-solid fa-file-lines mr-1"></i> Lihat File</a>`;
+            fileBtnHtml = `<a href="${escapeHtml(row.foto_drive_url)}" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-600 font-bold underline flex items-center"><i class="fa-solid fa-file-lines mr-1"></i> Lihat Dokumen</a>`;
         } else if (row.foto_drive_url === 'Uploading Drive...') {
             fileBtnHtml = `<span class="text-amber-600 text-[10px] font-semibold animate-pulse">Proses Drive...</span>`;
         }
@@ -495,7 +488,7 @@ function renderHrLogsTable(logs) {
             <td class="p-3">${fileBtnHtml}</td>
             <td class="p-3">${badgeApproval}</td>
             <td class="p-3 text-center space-x-1 whitespace-nowrap">
-                <button onclick="approveAction(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
+                <button onclick="approveAction(${row.id}, '${escapeHtml(row.nama_karyawan)}', '${escapeHtml(row.jenis_pengajuan)}')" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
                 <button onclick="openRejectModal(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
             </td>
         `;
@@ -503,10 +496,10 @@ function renderHrLogsTable(logs) {
     });
 }
 
-window.approveAction = async function(recordId, karyawanNama) {
-    if (!confirm(`Apakah Anda yakin ingin menyetujui (ACC) presensi / koreksi untuk ${karyawanNama}?`)) return;
-    await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-' });
-    showToast('Approval Berhasil!', 'success');
+window.approveAction = async function(recordId, karyawanNama, jenisPengajuan) {
+    if (!confirm(`ACC pengajuan / koreksi untuk ${karyawanNama}?`)) return;
+    await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan });
+    showToast('Approval Berhasil & Sisa Cuti Diperbarui!', 'success');
     window.loadHrLogs();
 };
 

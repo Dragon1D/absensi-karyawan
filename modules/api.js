@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - STABLE ACCURATE RANGE
+// MODULE: API SERVICE (modules/api.js) - STRICT STATE MACHINE
 // Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
@@ -33,9 +33,7 @@ export const ApiService = {
         const mm = String(wibDate.getUTCMonth() + 1).padStart(2, '0');
         const dd = String(wibDate.getUTCDate()).padStart(2, '0');
         
-        // WIB 00:00:00 = UTC Kemarin 17:00:00
         const startIso = new Date(Date.UTC(yyyy, wibDate.getUTCMonth(), dd, 0 - 7, 0, 0)).toISOString();
-        // WIB 23:59:59 = UTC Hari Ini 16:59:59
         const endIso = new Date(Date.UTC(yyyy, wibDate.getUTCMonth(), dd, 23 - 7, 59, 59)).toISOString();
         
         return { startIso, endIso };
@@ -64,17 +62,21 @@ export const ApiService = {
         }
     },
 
-    // Pengecekan Akurat Status Hari Ini
-    async checkTodayStatus(karyawanNama, storeNama) {
-        if (!karyawanNama || !storeNama) return 'Belum Absen';
-        if (!navigator.onLine) return 'OFFLINE_UNKNOWN';
+    // Pengecekan Detail Riwayat Absen Hari Ini (Clock In, Clock Out, & Shift)
+    async checkTodayStatusDetail(karyawanNama, storeNama) {
+        if (!karyawanNama || !storeNama) {
+            return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
+        }
+        if (!navigator.onLine) {
+            return { status: 'OFFLINE_UNKNOWN', hasClockIn: false, hasClockOut: false, clockInShift: null };
+        }
 
         try {
             const cleanEmp = karyawanNama.trim();
             const cleanStore = storeNama.trim();
             const { startIso, endIso } = this.getWibDayBounds();
 
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=1`;
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=10`;
 
             const res = await fetch(url, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -83,10 +85,23 @@ export const ApiService = {
             if (!res.ok) throw new Error("Gagal mengambil status presensi");
             const data = await res.json();
 
-            return (data && data.length > 0) ? data[0].status_absen : 'Belum Absen';
+            if (!data || data.length === 0) {
+                return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
+            }
+
+            const clockInRec = data.find(r => r.status_absen === 'Clock In' || r.status_absen.includes('Clock In'));
+            const clockOutRec = data.find(r => r.status_absen === 'Clock Out' || r.status_absen.includes('Clock Out'));
+            const lastRec = data[0];
+
+            return {
+                status: lastRec.status_absen,
+                hasClockIn: !!clockInRec,
+                hasClockOut: !!clockOutRec,
+                clockInShift: clockInRec ? clockInRec.jam_shift : null
+            };
         } catch (err) {
             console.error("Check Today Status Error:", err);
-            return 'ERROR_CHECKING';
+            return { status: 'ERROR_CHECKING', hasClockIn: false, hasClockOut: false, clockInShift: null };
         }
     },
 

@@ -58,9 +58,8 @@ async function initApp() {
     masterKaryawan = data.karyawan || [];
     populateStoreDropdown();
 
-    // Init GPS & Camera
+    // Init GPS Saja (Kamera OFF secara default)
     GeoService.initGeolocation('gpsLocationText');
-   // CameraService.startWebcam('webcam', 'photoCanvas', 'btnCapture', 'btnRetake');
 }
 
 if (document.readyState === 'loading') {
@@ -70,7 +69,7 @@ if (document.readyState === 'loading') {
 }
 
 window.addEventListener('beforeunload', () => {
-    CameraService.stopWebcam('webcam');
+    CameraService.stopWebcam('webcam', 'btnToggleCamera');
 });
 
 // -------------------------------------------------------------------------
@@ -81,23 +80,18 @@ window.switchTab = function(tab) {
     const hrSec = document.getElementById('tabHrSection');
     const salesBtn = document.getElementById('tabSalesBtn');
     const hrBtn = document.getElementById('tabHrBtn');
-    
-    window.toggleCameraPower = async function() {
-    await CameraService.toggleCamera('webcam', 'btnToggleCamera');
-};
 
     if (tab === 'sales') {
         salesSec.classList.remove('hidden');
         hrSec.classList.add('hidden');
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
-        if (currentAttachType === 'camera') CameraService.startWebcam('webcam', 'photoCanvas', 'btnCapture', 'btnRetake');
     } else {
         salesSec.classList.add('hidden');
         hrSec.classList.remove('hidden');
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
-        CameraService.stopWebcam('webcam');
+        CameraService.stopWebcam('webcam', 'btnToggleCamera');
     }
 };
 
@@ -191,13 +185,12 @@ window.setAttachType = function(type) {
         toggleFile.className = "px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900";
         containerCam.classList.remove('hidden');
         containerFile.classList.add('hidden');
-        CameraService.startWebcam('webcam', 'photoCanvas', 'btnCapture', 'btnRetake');
     } else {
         toggleFile.className = "px-2.5 py-1 rounded-md bg-white text-indigo-600 shadow-sm";
         toggleCam.className = "px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900";
         containerFile.classList.remove('hidden');
         containerCam.classList.add('hidden');
-        CameraService.stopWebcam('webcam');
+        CameraService.stopWebcam('webcam', 'btnToggleCamera');
     }
 };
 
@@ -208,6 +201,13 @@ window.updateCharCount = function() {
 
 window.initGeolocation = function() {
     GeoService.initGeolocation('gpsLocationText');
+};
+
+// -------------------------------------------------------------------------
+// CAMERA HANDLERS (ON/OFF TOGGLE & ANTI-GEPENG)
+// -------------------------------------------------------------------------
+window.toggleCameraPower = async function() {
+    await CameraService.toggleCamera('webcam', 'btnToggleCamera');
 };
 
 window.takeSnapshot = function() {
@@ -227,7 +227,6 @@ window.resetCamera = function() {
     document.getElementById('btnCapture').classList.remove('hidden');
     document.getElementById('btnRetake').classList.add('hidden');
 };
-
 
 window.handleFileSelected = function(event) {
     const file = event.target.files[0];
@@ -253,10 +252,6 @@ window.clearSelectedFile = function() {
     document.getElementById('filePreviewBadge').classList.remove('flex');
 };
 
-if (!navigator.onLine) {
-    showToast('❌ Koneksi internet terputus! Periksa sinyal HP Anda.', 'error');
-    return;
-}
 window.submitPresensi = async function() {
     const storeNama = document.getElementById('selectStore').value;
     const karyawanNama = document.getElementById('selectKaryawan').value;

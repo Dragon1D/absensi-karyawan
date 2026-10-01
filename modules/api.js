@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - PRODUCTION READY v8.0
+// MODULE: API SERVICE (modules/api.js) - WITH LEAVE BALANCE & FILE ONLY
 // Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
@@ -19,20 +19,19 @@ const HARDCODED_STORES = [
 ];
 
 const HARDCODED_KARYAWAN = [
-    { id: 'EMP-101', storeId: 'STORE-01', nama: 'Budi Santoso', jabatan: 'Senior Sales' },
-    { id: 'EMP-102', storeId: 'STORE-01', nama: 'Siti Nurhaliza', jabatan: 'Sales Executive' },
-    { id: 'EMP-201', storeId: 'STORE-02', nama: 'Andra Wijaya', jabatan: 'Senior Sales' },
-    { id: 'EMP-301', storeId: 'STORE-03', nama: 'Lukman Hakim', jabatan: 'Leader Store' }
+    { id: 'EMP-101', storeId: 'STORE-01', nama: 'Budi Santoso', jabatan: 'Senior Sales', sisaCuti: 12 },
+    { id: 'EMP-102', storeId: 'STORE-01', nama: 'Siti Nurhaliza', jabatan: 'Sales Executive', sisaCuti: 10 },
+    { id: 'EMP-201', storeId: 'STORE-02', nama: 'Andra Wijaya', jabatan: 'Senior Sales', sisaCuti: 8 },
+    { id: 'EMP-301', storeId: 'STORE-03', nama: 'Lukman Hakim', jabatan: 'Leader Store', sisaCuti: 12 }
 ];
 
 export const ApiService = {
-    // Helper Format WIB Date (YYYY-MM-DD)
     getWibDateStr(d = new Date()) {
         const wib = new Date(d.getTime() + (7 * 60 * 60 * 1000));
         return wib.toISOString().split('T')[0];
     },
 
-    // Fetch Master Data Store & Karyawan
+    // Fetch Master Data Store & Karyawan (termasuk Sisa Cuti)
     async fetchMasterData() {
         try {
             const resStore = await fetch(`${SUPABASE_URL}/rest/v1/stores?select=*`, {
@@ -46,7 +45,13 @@ export const ApiService = {
             const empData = resEmp.ok ? await resEmp.json() : [];
 
             const stores = storesData.length > 0 ? storesData.map(s => ({ id: s.id, nama: s.nama_store })) : HARDCODED_STORES;
-            const karyawan = empData.length > 0 ? empData.map(e => ({ id: e.id, storeId: e.store_id, nama: e.nama_karyawan, jabatan: e.jabatan })) : HARDCODED_KARYAWAN;
+            const karyawan = empData.length > 0 ? empData.map(e => ({ 
+                id: e.id, 
+                storeId: e.store_id, 
+                nama: e.nama_karyawan, 
+                jabatan: e.jabatan,
+                sisaCuti: e.sisa_cuti !== undefined ? e.sisa_cuti : 12
+            })) : HARDCODED_KARYAWAN;
 
             return { stores, karyawan };
         } catch (err) {
@@ -55,10 +60,9 @@ export const ApiService = {
         }
     },
 
-    // Cek Status Terakhir Absen Hari Ini (Real-Time WIB)
+    // Cek Status Terakhir Absen Hari Ini
     async checkTodayStatus(karyawanNama, storeNama) {
         if (!karyawanNama || !storeNama) return 'Belum Absen';
-
         if (!navigator.onLine) return 'OFFLINE_UNKNOWN';
 
         try {
@@ -74,11 +78,7 @@ export const ApiService = {
 
             if (!res.ok) return 'Belum Absen';
             const data = await res.json();
-
-            if (data && data.length > 0) {
-                return data[0].status_absen;
-            }
-            return 'Belum Absen';
+            return (data && data.length > 0) ? data[0].status_absen : 'Belum Absen';
         } catch (err) {
             return 'Belum Absen';
         }
@@ -107,6 +107,35 @@ export const ApiService = {
         }
     },
 
+    // Potong Sisa Cuti Karyawan saat HR Approve Cuti
+    async deductLeaveBalance(karyawanNama) {
+        try {
+            // Fetch Sisa Cuti saat ini
+            const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(karyawanNama)}`, {
+                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+            });
+            if (!resEmp.ok) return;
+            const empData = await resEmp.json();
+            if (!empData || empData.length === 0) return;
+
+            const currentBalance = empData[0].sisa_cuti || 12;
+            const newBalance = Math.max(0, currentBalance - 1);
+
+            // Update Sisa Cuti Baru
+            await fetch(`${SUPABASE_URL}/rest/v1/karyawan?id=eq.${empData[0].id}`, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ sisa_cuti: newBalance })
+            });
+        } catch (err) {
+            console.error("Gagal update sisa cuti:", err);
+        }
+    },
+
     // Submit Background Sync ke Google Apps Script
     async submitToAppsScriptBackground(payload) {
         try {
@@ -118,21 +147,17 @@ export const ApiService = {
             });
             return true;
         } catch (err) {
-            console.warn("GAS Background Sync Warning:", err);
             return false;
         }
     },
 
-    // Verify PIN HR (Protected Verification)
+    // Verify PIN HR
     async verifyHrPin(pin) {
         const validPins = ['1234', '8888'];
-        if (validPins.includes(String(pin).trim())) {
-            return { status: 'success' };
-        }
-        return { status: 'error' };
+        return validPins.includes(String(pin).trim()) ? { status: 'success' } : { status: 'error' };
     },
 
-    // Fetch Log untuk Portal HR (Limit Max 500)
+    // Fetch Log HR
     async fetchHrLogs(startDate, endDate) {
         try {
             if (!startDate || !endDate) {
@@ -140,7 +165,6 @@ export const ApiService = {
                 startDate = today;
                 endDate = today;
             }
-
             const startIso = `${startDate}T00:00:00+07:00`;
             const endIso = `${endDate}T23:59:59+07:00`;
 
@@ -153,13 +177,12 @@ export const ApiService = {
             if (!res.ok) return [];
             return await res.json();
         } catch (err) {
-            console.error("Gagal fetch HR logs:", err);
             return [];
         }
     },
 
     // Update Approval / Rejection HR
-    async updateApproval({ rowId, karyawanNama, timestamp, approvalStatus, alasanReject }) {
+    async updateApproval({ rowId, karyawanNama, approvalStatus, alasanReject, jenisPengajuan }) {
         try {
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${rowId}`;
             const res = await fetch(url, {
@@ -176,9 +199,13 @@ export const ApiService = {
                 })
             });
 
+            // Jika Pengajuan Cuti di-ACC, potong jatah cuti karyawan
+            if (res.ok && approvalStatus === 'Approved' && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
+                await this.deductLeaveBalance(karyawanNama);
+            }
+
             return res.ok;
         } catch (err) {
-            console.error("Gagal update approval:", err);
             return false;
         }
     }

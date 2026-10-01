@@ -7,7 +7,7 @@ let streamInstance = null;
 let photoBase64 = '';
 
 export const CameraService = {
-    // Cek apakah stream kamera sedang aktif
+    // Cek status keaktifan kamera
     isCameraActive() {
         return streamInstance !== null && streamInstance.active;
     },
@@ -52,7 +52,7 @@ export const CameraService = {
             return true;
         } catch (err) {
             console.error("Gagal membuka kamera:", err);
-            alert("Gagal membuka kamera. Pastikan izin kamera sudah diberikan.");
+            alert("Gagal membuka kamera. Pastikan izin kamera sudah diberikan di browser Anda.");
             return false;
         }
     },
@@ -84,7 +84,7 @@ export const CameraService = {
             return null;
         }
 
-        // KUNCI ANTI GEPENG: Disamakan dengan resolusi asli sensor kamera
+        // KUNCI ANTI GEPENG: Samakan resolusi canvas dengan resolusi asli sensor kamera
         const vWidth = video.videoWidth || 640;
         const vHeight = video.videoHeight || 480;
 
@@ -103,7 +103,7 @@ export const CameraService = {
         // Export ke Base64 (JPEG Quality 0.75 agar ringan di bawah 100KB)
         photoBase64 = canvas.toDataURL('image/jpeg', 0.75);
 
-        // Otomatis matikan stream kamera setelah foto berhasil diambil
+        // Matikan stream kamera setelah foto berhasil diambil
         this.stopWebcam(videoId, 'btnToggleCamera');
 
         return photoBase64;

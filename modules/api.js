@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - STRICT STATE MACHINE
+// MODULE: API SERVICE (modules/api.js) - DYNAMIC LEAVE DEDUCTION
 // Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
@@ -25,7 +25,6 @@ const HARDCODED_KARYAWAN = [
 ];
 
 export const ApiService = {
-    // Dapatkan awal & akhir hari WIB dalam UTC ISO String
     getWibDayBounds(d = new Date()) {
         const wibOffsetMs = 7 * 60 * 60 * 1000;
         const wibDate = new Date(d.getTime() + wibOffsetMs);
@@ -62,13 +61,12 @@ export const ApiService = {
         }
     },
 
-    // Pengecekan Detail Riwayat Absen Hari Ini (Clock In, Clock Out, & Shift)
     async checkTodayStatusDetail(karyawanNama, storeNama) {
         if (!karyawanNama || !storeNama) {
-            return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
+            return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
         }
         if (!navigator.onLine) {
-            return { status: 'OFFLINE_UNKNOWN', hasClockIn: false, hasClockOut: false, clockInShift: null };
+            return { status: 'OFFLINE_UNKNOWN', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
         }
 
         try {
@@ -76,7 +74,7 @@ export const ApiService = {
             const cleanStore = storeNama.trim();
             const { startIso, endIso } = this.getWibDayBounds();
 
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=10`;
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${encodeURIComponent(startIso)}&timestamp=lte.${encodeURIComponent(endIso)}&order=timestamp.desc&limit=10`;
 
             const res = await fetch(url, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -86,22 +84,25 @@ export const ApiService = {
             const data = await res.json();
 
             if (!data || data.length === 0) {
-                return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
+                return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
             }
 
             const clockInRec = data.find(r => r.status_absen === 'Clock In' || r.status_absen.includes('Clock In'));
             const clockOutRec = data.find(r => r.status_absen === 'Clock Out' || r.status_absen.includes('Clock Out'));
+            const pengajuanRec = data.find(r => r.status_absen.includes('Pengajuan') || (r.jenis_pengajuan && r.jenis_pengajuan !== '-'));
             const lastRec = data[0];
 
             return {
                 status: lastRec.status_absen,
                 hasClockIn: !!clockInRec,
                 hasClockOut: !!clockOutRec,
-                clockInShift: clockInRec ? clockInRec.jam_shift : null
+                hasPengajuan: !!pengajuanRec,
+                clockInShift: clockInRec ? clockInRec.jam_shift : null,
+                pengajuanType: pengajuanRec ? pengajuanRec.jenis_pengajuan : null,
+                approvalStatus: pengajuanRec ? pengajuanRec.status_approval_hr : lastRec.status_approval_hr
             };
         } catch (err) {
-            console.error("Check Today Status Error:", err);
-            return { status: 'ERROR_CHECKING', hasClockIn: false, hasClockOut: false, clockInShift: null };
+            return { status: 'ERROR_CHECKING', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
         }
     },
 
@@ -122,7 +123,8 @@ export const ApiService = {
         return data[0] ? data[0].id : null;
     },
 
-    async deductLeaveBalance(karyawanNama) {
+    // Pemotongan Sisa Cuti Dinamis berdasarkan jumlah hari
+    async deductLeaveBalance(karyawanNama, jumlahHari = 1) {
         try {
             const cleanEmp = karyawanNama.trim();
             const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, {
@@ -133,7 +135,7 @@ export const ApiService = {
             if (!empData || empData.length === 0) return;
 
             const currentBalance = empData[0].sisa_cuti ?? 12;
-            const newBalance = Math.max(0, currentBalance - 1);
+            const newBalance = Math.max(0, currentBalance - parseInt(jumlahHari));
 
             await fetch(`${SUPABASE_URL}/rest/v1/karyawan?id=eq.${empData[0].id}`, {
                 method: 'PATCH',
@@ -169,8 +171,8 @@ export const ApiService = {
 
     async fetchHrLogs(startDate, endDate) {
         try {
-            const startIso = `${startDate}T00:00:00+07:00`;
-            const endIso = `${endDate}T23:59:59+07:00`;
+            const startIso = encodeURIComponent(`${startDate}T00:00:00+07:00`);
+            const endIso = encodeURIComponent(`${endDate}T23:59:59+07:00`);
 
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=500`;
 
@@ -185,7 +187,7 @@ export const ApiService = {
         }
     },
 
-    async updateApproval({ rowId, karyawanNama, approvalStatus, alasanReject, jenisPengajuan }) {
+    async updateApproval({ rowId, karyawanNama, approvalStatus, alasanReject, jenisPengajuan, jumlahHari }) {
         try {
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${rowId}`;
             const res = await fetch(url, {
@@ -203,7 +205,7 @@ export const ApiService = {
             });
 
             if (res.ok && approvalStatus === 'Approved' && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
-                await this.deductLeaveBalance(karyawanNama);
+                await this.deductLeaveBalance(karyawanNama, jumlahHari || 1);
             }
 
             return res.ok;

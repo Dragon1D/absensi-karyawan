@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - STABLE APPROVAL & DYNAMIC LEAVE
+// MODULE: API SERVICE (modules/api.js) - REALTIME APPROVAL & DYNAMIC LEAVE
 // Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
@@ -20,7 +20,7 @@ const HARDCODED_STORES = [
 const HARDCODED_KARYAWAN = [
     { id: 'EMP-101', storeId: 'STORE-01', nama: 'Budi Santoso', jabatan: 'Senior Sales', sisaCuti: 12 },
     { id: 'EMP-102', storeId: 'STORE-01', nama: 'Siti Nurhaliza', jabatan: 'Sales Executive', sisaCuti: 10 },
-    { id: 'EMP-201', storeId: 'STORE-02', nama: 'Andra Wijaya', jabatan: 'Senior Sales', sisaCuti: 8 },
+    { id: 'EMP-201', storeId: 'STORE-02', nama: 'Dian Sastro', jabatan: 'Senior Sales', sisaCuti: 12 },
     { id: 'EMP-301', storeId: 'STORE-03', nama: 'Lukman Hakim', jabatan: 'Leader Store', sisaCuti: 12 },
     { id: 'EMP-501', storeId: 'STORE-05', nama: 'Fiersa Besari', jabatan: 'Sales Executive', sisaCuti: 12 }
 ];

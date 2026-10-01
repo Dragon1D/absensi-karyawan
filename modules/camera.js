@@ -13,6 +13,11 @@ export const CameraService = {
         return streamInstance !== null && streamInstance.active;
     },
 
+    // Getter untuk mengambil data foto Base64
+    getPhotoBase64() {
+        return photoBase64;
+    },
+
     // Toggle Nyalakan / Matikan Kamera
     async toggleCamera(videoId, btnToggleId) {
         if (this.isCameraActive()) {
@@ -71,7 +76,6 @@ export const CameraService = {
             } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
                 alert("⚠️ Kamera sedang digunakan oleh aplikasi lain (Zoom/Meet/Kamera HP). Tutup aplikasi tersebut terlebih dahulu.");
             } else if (err.name === 'OverconstrainedError') {
-                // Fallback ke resolusi standar jika HP tidak mendukung 720p
                 return await this.startWebcamFallback(videoId, btnToggleId);
             } else {
                 alert("Gagal membuka kamera: " + err.message);
@@ -165,11 +169,9 @@ export const CameraService = {
     applyWatermark(ctx, width, height, gpsText) {
         const bannerHeight = Math.max(36, Math.round(height * 0.08));
         
-        // Banner hitam transparan di bagian bawah foto
         ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
         ctx.fillRect(0, height - bannerHeight, width, bannerHeight);
 
-        // Format Teks Waktu & GPS
         const now = new Date();
         const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
         const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + " WIB";
@@ -192,7 +194,6 @@ export const CameraService = {
         if (canvas) {
             const ctx = canvas.getContext('2d');
             if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Free GPU VRAM on Mobile Browsers
             canvas.width = 0;
             canvas.height = 0;
         }

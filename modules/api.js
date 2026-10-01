@@ -1,6 +1,6 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - REALTIME APPROVAL & DYNAMIC LEAVE
-// Centralized REST API Supabase & Google Apps Script Async Pipeline
+// MODULE: API SERVICE (modules/api.js) - HIGH-PERFORMANCE SUPABASE PIPELINE
+// Parallel Execution, Anti-Cache Headers, & Direct Server Synchronization
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -8,6 +8,14 @@ import { CONFIG } from '../config.js';
 const SUPABASE_URL = CONFIG.SUPABASE_URL; 
 const SUPABASE_KEY = CONFIG.SUPABASE_KEY;
 const SCRIPT_URL = CONFIG.SCRIPT_URL;
+
+// Header standar anti-cache untuk memaksa Supabase selalu mengembalikan data paling fresh
+const GET_HEADERS = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache'
+};
 
 const HARDCODED_STORES = [
     { id: 'STORE-01', nama: 'Mall Taman Anggrek (MTA)' },
@@ -39,16 +47,15 @@ export const ApiService = {
         return { startIso, endIso };
     },
 
+    // 1. Fetch Master Data (Anti-Cache)
     async fetchMasterData() {
         try {
-            const resStore = await fetch(`${SUPABASE_URL}/rest/v1/stores?select=*`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
-            const storesData = resStore.ok ? await resStore.json() : [];
+            const [resStore, resEmp] = await Promise.all([
+                fetch(`${SUPABASE_URL}/rest/v1/stores?select=id,nama_store`, { headers: GET_HEADERS, cache: 'no-store' }),
+                fetch(`${SUPABASE_URL}/rest/v1/karyawan?select=id,store_id,nama_karyawan,jabatan,sisa_cuti`, { headers: GET_HEADERS, cache: 'no-store' })
+            ]);
 
-            const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?select=*`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
+            const storesData = resStore.ok ? await resStore.json() : [];
             const empData = resEmp.ok ? await resEmp.json() : [];
 
             const stores = storesData.length > 0 ? storesData.map(s => ({ id: s.id, nama: s.nama_store })) : HARDCODED_STORES;
@@ -62,6 +69,7 @@ export const ApiService = {
         }
     },
 
+    // 2. Direct Real-time Check Today Status (Bypass Browser Cache Total)
     async checkTodayStatusDetail(karyawanNama, storeNama) {
         if (!karyawanNama || !storeNama) {
             return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
@@ -75,11 +83,11 @@ export const ApiService = {
             const cleanStore = storeNama.trim();
             const { startIso, endIso } = this.getWibDayBounds();
 
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${encodeURIComponent(startIso)}&timestamp=lte.${encodeURIComponent(endIso)}&order=timestamp.desc&limit=10`;
+            // Tambahkan timestamp acak (_t) pada URL agar browser tidak pernah menggunakan cache
+            const cacheBuster = Date.now();
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${encodeURIComponent(startIso)}&timestamp=lte.${encodeURIComponent(endIso)}&order=timestamp.desc&limit=10&_t=${cacheBuster}`;
 
-            const res = await fetch(url, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
+            const res = await fetch(url, { headers: GET_HEADERS, cache: 'no-store' });
 
             if (!res.ok) throw new Error("Gagal mengambil status presensi");
             const data = await res.json();
@@ -107,6 +115,7 @@ export const ApiService = {
         }
     },
 
+    // 3. Submit Log Absensi
     async submitToSupabase(payload) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/log_absensi`, {
             method: 'POST',
@@ -124,11 +133,13 @@ export const ApiService = {
         return data[0] ? data[0].id : null;
     },
 
+    // 4. Potong Cuti Karyawan
     async deductLeaveBalance(karyawanNama, jumlahHari = 1) {
         try {
             const cleanEmp = karyawanNama.trim();
             const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                headers: GET_HEADERS,
+                cache: 'no-store'
             });
             if (!resEmp.ok) return;
             const empData = await resEmp.json();
@@ -142,7 +153,8 @@ export const ApiService = {
                 headers: {
                     'apikey': SUPABASE_KEY,
                     'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
                 },
                 body: JSON.stringify({ sisa_cuti: newBalance })
             });
@@ -169,16 +181,16 @@ export const ApiService = {
         return (pin === '1234' || pin === '8888') ? { status: 'success' } : { status: 'error' };
     },
 
+    // 5. Fetch HR Logs (Anti-Cache dengan Timestamp Parameter)
     async fetchHrLogs(startDate, endDate) {
         try {
             const startIso = encodeURIComponent(`${startDate}T00:00:00+07:00`);
             const endIso = encodeURIComponent(`${endDate}T23:59:59+07:00`);
+            const cacheBuster = Date.now();
 
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=500`;
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=500&_t=${cacheBuster}`;
 
-            const res = await fetch(url, {
-                headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-            });
+            const res = await fetch(url, { headers: GET_HEADERS, cache: 'no-store' });
 
             if (!res.ok) return [];
             return await res.json();
@@ -187,26 +199,34 @@ export const ApiService = {
         }
     },
 
+    // 6. Fast Approval Execution (Parallel Promise Execution)
     async updateApproval({ rowId, karyawanNama, approvalStatus, alasanReject, jenisPengajuan, jumlahHari }) {
         try {
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${rowId}`;
-            const res = await fetch(url, {
-                method: 'PATCH',
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    status_approval_hr: approvalStatus === 'Approved' ? 'DI ACC' : 'DI REJECT',
-                    alasan_penolakan_hr: alasanReject || '-',
-                    is_anomaly: false
-                })
-            });
 
-            if (res.ok && approvalStatus === 'Approved' && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
-                await this.deductLeaveBalance(karyawanNama, jumlahHari || 1);
+            // Eksekusi Update Log & Potong Cuti Secara Sejajar (Parallel HTTP Requests)
+            const tasks = [
+                fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify({
+                        status_approval_hr: approvalStatus === 'Approved' ? 'DI ACC' : 'DI REJECT',
+                        alasan_penolakan_hr: alasanReject || '-',
+                        is_anomaly: false
+                    })
+                })
+            ];
+
+            if (approvalStatus === 'Approved' && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
+                tasks.push(this.deductLeaveBalance(karyawanNama, jumlahHari || 1));
             }
+
+            const [resLog] = await Promise.all(tasks);
 
             this.submitToAppsScriptBackground({
                 action: 'update_approval',
@@ -215,9 +235,9 @@ export const ApiService = {
                 alasanReject: alasanReject || '-'
             });
 
-            return res.ok;
+            return resLog.ok;
         } catch (err) {
-            console.error("Update approval error:", err);
+            console.error("Fast update approval error:", err);
             return false;
         }
     }

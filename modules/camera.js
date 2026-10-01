@@ -42,7 +42,11 @@ export const CameraService = {
 
             streamInstance = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = streamInstance;
-            video.style.objectFit = 'cover'; // Anti-gepeng pada preview video
+            
+            // CSS Mirror & Anti-Gepeng pada Live Preview Video
+            video.style.objectFit = 'cover';
+            video.style.transform = 'scaleX(-1)'; // <- Efek Cermin Real-time pada Live Preview
+
             await video.play();
 
             if (btnToggle) {
@@ -66,6 +70,7 @@ export const CameraService = {
         const video = document.getElementById(videoId);
         if (video) {
             video.srcObject = null;
+            video.style.transform = 'none';
         }
         const btnToggle = document.getElementById(btnToggleId);
         if (btnToggle) {
@@ -74,7 +79,7 @@ export const CameraService = {
         }
     },
 
-    // Ambil Foto (Preserve Native Aspect Ratio - Anti Gepeng)
+    // Ambil Foto (Preserve Native Aspect Ratio & Mirror Alignment)
     takeSnapshot(videoId, canvasId) {
         const video = document.getElementById(videoId);
         const canvas = document.getElementById(canvasId);
@@ -93,7 +98,7 @@ export const CameraService = {
 
         const ctx = canvas.getContext('2d');
         
-        // Mirroring kamera depan agar hasil foto tidak terbalik
+        // Mirroring hasil foto agar sama persis seperti di live preview
         ctx.save();
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);

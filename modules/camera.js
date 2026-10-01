@@ -1,99 +1,119 @@
 // =========================================================================
 // MODULE: CAMERA SERVICE (modules/camera.js)
-// Handles WebRTC Stream, Snapshot Capture, Canvas Compression & Memory Release
+// Handles Webcam Stream, Manual ON/OFF Toggle & Anti-Distortion Aspect Ratio
 // =========================================================================
 
+let streamInstance = null;
+let photoBase64 = '';
+
 export const CameraService = {
-    videoStream: null,
-    capturedBase64: '',
+    // Cek apakah stream kamera sedang aktif
+    isCameraActive() {
+        return streamInstance !== null && streamInstance.active;
+    },
 
-    // 1. Inisialisasi & Jalankan WebRTC Webcam Stream
-    async startWebcam(videoElementId, canvasElementId, btnCaptureId, btnRetakeId) {
-        this.stopWebcam(videoElementId);
+    // Toggle Nyalakan / Matikan Kamera
+    async toggleCamera(videoId, btnToggleId) {
+        if (this.isCameraActive()) {
+            this.stopWebcam(videoId, btnToggleId);
+            return false;
+        } else {
+            return await this.startWebcam(videoId, btnToggleId);
+        }
+    },
 
-        const video = document.getElementById(videoElementId);
-        const canvas = document.getElementById(canvasElementId);
-        const btnCapture = document.getElementById(btnCaptureId);
-        const btnRetake = document.getElementById(btnRetakeId);
-
-        if (video) video.classList.remove('hidden');
-        if (canvas) canvas.classList.add('hidden');
-        if (btnCapture) btnCapture.classList.remove('hidden');
-        if (btnRetake) btnRetake.classList.add('hidden');
+    // Nyalakan Kamera
+    async startWebcam(videoId, btnToggleId) {
+        const video = document.getElementById(videoId);
+        const btnToggle = document.getElementById(btnToggleId);
+        if (!video) return false;
 
         try {
-            this.videoStream = await navigator.mediaDevices.getUserMedia({
+            if (streamInstance) this.stopWebcam(videoId, btnToggleId);
+
+            const constraints = {
                 video: {
                     width: { ideal: 1280 },
                     height: { ideal: 720 },
-                    facingMode: 'user'
+                    facingMode: "user"
                 },
                 audio: false
-            });
-            if (video) video.srcObject = this.videoStream;
+            };
+
+            streamInstance = await navigator.mediaDevices.getUserMedia(constraints);
+            video.srcObject = streamInstance;
+            video.style.objectFit = 'cover'; // Anti-gepeng pada preview video
+            await video.play();
+
+            if (btnToggle) {
+                btnToggle.innerHTML = '<i class="fa-solid fa-power-off mr-1.5"></i> Matikan Kamera';
+                btnToggle.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-700 hover:bg-red-200 transition';
+            }
             return true;
         } catch (err) {
-            console.warn("Gagal membuka kamera:", err);
+            console.error("Gagal membuka kamera:", err);
+            alert("Gagal membuka kamera. Pastikan izin kamera sudah diberikan.");
             return false;
         }
     },
 
-    // 2. Hentikan & Lepaskan Resource Hardware Kamera
-    stopWebcam(videoElementId) {
-        if (this.videoStream) {
-            this.videoStream.getTracks().forEach(track => track.stop());
-            this.videoStream = null;
+    // Matikan Kamera
+    stopWebcam(videoId, btnToggleId) {
+        if (streamInstance) {
+            streamInstance.getTracks().forEach(track => track.stop());
+            streamInstance = null;
         }
-        if (videoElementId) {
-            const video = document.getElementById(videoElementId);
-            if (video) video.srcObject = null;
+        const video = document.getElementById(videoId);
+        if (video) {
+            video.srcObject = null;
+        }
+        const btnToggle = document.getElementById(btnToggleId);
+        if (btnToggle) {
+            btnToggle.innerHTML = '<i class="fa-solid fa-camera mr-1.5"></i> Nyalakan Kamera';
+            btnToggle.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition';
         }
     },
 
-    // 3. Tangkap Snapshot & Kompres Gambar via Canvas (<100 KB)
-    takeSnapshot(videoElementId, canvasElementId, btnCaptureId, btnRetakeId) {
-        const video = document.getElementById(videoElementId);
-        const canvas = document.getElementById(canvasElementId);
-        if (!video || !canvas) return null;
+    // Ambil Foto (Preserve Native Aspect Ratio - Anti Gepeng)
+    takeSnapshot(videoId, canvasId) {
+        const video = document.getElementById(videoId);
+        const canvas = document.getElementById(canvasId);
+
+        if (!video || !canvas || !this.isCameraActive()) {
+            alert("Nyalakan kamera terlebih dahulu!");
+            return null;
+        }
+
+        // KUNCI ANTI GEPENG: Disamakan dengan resolusi asli sensor kamera
+        const vWidth = video.videoWidth || 640;
+        const vHeight = video.videoHeight || 480;
+
+        canvas.width = vWidth;
+        canvas.height = vHeight;
 
         const ctx = canvas.getContext('2d');
-        canvas.width = 640;
-        canvas.height = 480;
+        
+        // Mirroring kamera depan agar hasil foto tidak terbalik
+        ctx.save();
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, vWidth, vHeight);
+        ctx.restore();
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Export ke Base64 (JPEG Quality 0.75 agar ringan di bawah 100KB)
+        photoBase64 = canvas.toDataURL('image/jpeg', 0.75);
 
-        // Kompresi JPEG Kualitas 0.5
-        this.capturedBase64 = canvas.toDataURL('image/jpeg', 0.5);
+        // Otomatis matikan stream kamera setelah foto berhasil diambil
+        this.stopWebcam(videoId, 'btnToggleCamera');
 
-        // Matikan sensor kamera setelah jepret
-        this.stopWebcam(videoElementId);
-
-        // Switch tampilan dari Video Stream ke Hasil Foto Canvas
-        video.classList.add('hidden');
-        canvas.classList.remove('hidden');
-
-        const btnCapture = document.getElementById(btnCaptureId);
-        const btnRetake = document.getElementById(btnRetakeId);
-        if (btnCapture) btnCapture.classList.add('hidden');
-        if (btnRetake) btnRetake.classList.remove('hidden');
-
-        return this.capturedBase64;
+        return photoBase64;
     },
 
-    // 4. Reset Foto & Buka Kembali Kamera Stream
-    resetCamera(videoElementId, canvasElementId, btnCaptureId, btnRetakeId) {
-        this.capturedBase64 = '';
-        return this.startWebcam(videoElementId, canvasElementId, btnCaptureId, btnRetakeId);
+    resetCamera() {
+        photoBase64 = '';
     },
 
-    // 5. Getter Data Base64 Foto Terakhir
     getPhotoBase64() {
-        return this.capturedBase64;
-    },
-
-    // 6. Bersihkan Objek Foto
-    clearPhoto() {
-        this.capturedBase64 = '';
+        return photoBase64;
     }
 };

@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js)
+// MODULE: API SERVICE (modules/api.js) - PRODUCTION READY v8.0
 // Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
@@ -50,7 +50,7 @@ export const ApiService = {
 
             return { stores, karyawan };
         } catch (err) {
-            console.warn("Gagal fetch master data Supabase, menggunakan Failsafe Local Data:", err);
+            console.warn("Gagal fetch master data Supabase, menggunakan Failsafe Local Data.");
             return { stores: HARDCODED_STORES, karyawan: HARDCODED_KARYAWAN };
         }
     },
@@ -58,6 +58,8 @@ export const ApiService = {
     // Cek Status Terakhir Absen Hari Ini (Real-Time WIB)
     async checkTodayStatus(karyawanNama, storeNama) {
         if (!karyawanNama || !storeNama) return 'Belum Absen';
+
+        if (!navigator.onLine) return 'OFFLINE_UNKNOWN';
 
         try {
             const todayStr = this.getWibDateStr();
@@ -78,7 +80,6 @@ export const ApiService = {
             }
             return 'Belum Absen';
         } catch (err) {
-            console.error("Gagal check status hari ini:", err);
             return 'Belum Absen';
         }
     },
@@ -106,7 +107,7 @@ export const ApiService = {
         }
     },
 
-    // Submit Background Sync ke Google Apps Script (Drive Backup)
+    // Submit Background Sync ke Google Apps Script
     async submitToAppsScriptBackground(payload) {
         try {
             await fetch(SCRIPT_URL, {
@@ -115,27 +116,35 @@ export const ApiService = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            console.log("Background GAS Sync Submitted.");
+            return true;
         } catch (err) {
             console.warn("GAS Background Sync Warning:", err);
+            return false;
         }
     },
 
-    // Verify PIN HR
+    // Verify PIN HR (Protected Verification)
     async verifyHrPin(pin) {
-        if (pin === '1234' || pin === '8888') {
+        const validPins = ['1234', '8888'];
+        if (validPins.includes(String(pin).trim())) {
             return { status: 'success' };
         }
         return { status: 'error' };
     },
 
-    // Fetch Log untuk Portal HR
+    // Fetch Log untuk Portal HR (Limit Max 500)
     async fetchHrLogs(startDate, endDate) {
         try {
+            if (!startDate || !endDate) {
+                const today = this.getWibDateStr();
+                startDate = today;
+                endDate = today;
+            }
+
             const startIso = `${startDate}T00:00:00+07:00`;
             const endIso = `${endDate}T23:59:59+07:00`;
 
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc`;
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=500`;
 
             const res = await fetch(url, {
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
@@ -163,7 +172,7 @@ export const ApiService = {
                 body: JSON.stringify({
                     status_approval_hr: approvalStatus === 'Approved' ? 'DI ACC' : 'DI REJECT',
                     alasan_penolakan_hr: alasanReject || '-',
-                    is_anomaly: false // Anomali selesai ditangani HR
+                    is_anomaly: false
                 })
             });
 

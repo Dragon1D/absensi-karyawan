@@ -1,15 +1,12 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - WITH FILE-ONLY PENGAJUAN & SISA CUTI DISPLAY
-// Orchestrates UI Event Handlers, Dynamic Attachments & Leave Management
+// APP CONTROLLER (app.js) - STRICT SINGLE-SUBMISSION SAFEGUARD
+// Orchestrates UI Event Handlers, Dynamic Attachments & Immediate State Lock
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
 import { CameraService } from './modules/camera.js';
 import { GeoService } from './modules/geo.js';
 
-// -------------------------------------------------------------------------
-// HELPER FUNCTIONS
-// -------------------------------------------------------------------------
 function getWibDateString(date = new Date()) {
     const wibDate = new Date(date.getTime() + (7 * 60 * 60 * 1000));
     return wibDate.toISOString().split('T')[0];
@@ -40,9 +37,6 @@ function showToast(message, type = 'success') {
     }, 4000);
 }
 
-// -------------------------------------------------------------------------
-// STATE MANAGEMENT
-// -------------------------------------------------------------------------
 let currentMode = 'Clock In';
 let currentAttachType = 'camera';
 let masterStores = [];
@@ -53,21 +47,19 @@ let isCheckingStatus = false;
 let hrLogsCache = [];
 let selectedEmployeeSisaCuti = 12;
 
-// -------------------------------------------------------------------------
-// INITIALIZER
-// -------------------------------------------------------------------------
+// CACHE IN-MEMORY STATUS PRESENSI HARIAN
+let localEmployeeStatusCache = {};
+
 async function initApp() {
     const today = getWibDateString();
     if (document.getElementById('filterStartDate')) document.getElementById('filterStartDate').value = today;
     if (document.getElementById('filterEndDate')) document.getElementById('filterEndDate').value = today;
 
-    // Load Master Data
     const data = await ApiService.fetchMasterData();
     masterStores = data.stores || [];
     masterKaryawan = data.karyawan || [];
     populateStoreDropdown();
 
-    // Init GPS
     GeoService.initGeolocation('gpsLocationText');
 
     window.addEventListener('online', () => showToast('🌐 Koneksi terhubung kembali.', 'success'));
@@ -84,9 +76,6 @@ window.addEventListener('beforeunload', () => {
     CameraService.stopWebcam('webcam', 'btnToggleCamera');
 });
 
-// -------------------------------------------------------------------------
-// UI EVENT HANDLERS
-// -------------------------------------------------------------------------
 window.switchTab = function(tab) {
     const salesSec = document.getElementById('tabSalesSection');
     const hrSec = document.getElementById('tabHrSection');
@@ -154,9 +143,8 @@ window.onKaryawanChange = async function() {
         return;
     }
 
-    // TAMPILKAN SISA CUTI REALTIME
     const empObj = masterKaryawan.find(k => k.nama.trim() === karyawanNama.trim());
-    selectedEmployeeSisaCuti = (empObj && empObj.sisaCuti !== undefined) ? empObj.sisaCuti : 12;
+    selectedEmployeeSisaCuti = empObj?.sisaCuti ?? 12;
 
     if (badgeCuti) {
         badgeCuti.textContent = `🌴 Sisa Cuti: ${selectedEmployeeSisaCuti} Hari`;
@@ -164,18 +152,36 @@ window.onKaryawanChange = async function() {
         badgeCuti.classList.remove('hidden');
     }
 
+    // CEK IN-MEMORY CACHE DAHULU SBLM QUERY API
+    const cacheKey = `${karyawanNama.trim()}_${store.trim()}`;
+    if (localEmployeeStatusCache[cacheKey]) {
+        updateBadgeStatus(localEmployeeStatusCache[cacheKey]);
+        return;
+    }
+
     isCheckingStatus = true;
     badge.textContent = 'Mengecek...';
     const st = await ApiService.checkTodayStatus(karyawanNama, store);
     isCheckingStatus = false;
 
+    if (st !== 'ERROR_CHECKING') {
+        localEmployeeStatusCache[cacheKey] = st;
+        updateBadgeStatus(st);
+    } else {
+        badge.textContent = 'Gagal Cek Status';
+        badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700';
+    }
+};
+
+function updateBadgeStatus(st) {
+    const badge = document.getElementById('badgeLiveStatus');
     badge.textContent = st === 'OFFLINE_UNKNOWN' ? 'Offline' : st;
 
     if (st === 'Clock In' || st.includes('Clock In')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700';
     else if (st === 'Clock Out' || st.includes('Clock Out')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700';
     else if (st.includes('Pengajuan')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700';
     else badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
-};
+}
 
 window.setAbsenMode = function(mode) {
     currentMode = mode;
@@ -195,15 +201,14 @@ window.setAbsenMode = function(mode) {
         secShift.classList.remove('hidden');
         secPeng.classList.add('hidden');
         attachToggle.classList.add('hidden');
-        window.setAttachType('camera'); // Wajib Kamera untuk Clock In/Out
+        window.setAttachType('camera');
     } else {
-        // MODE PENGAJUAN: WAJIB FILE ONLY (Tutup Kamera)
         btnPeng.className = "py-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
         secShift.classList.add('hidden');
         secPeng.classList.remove('hidden');
-        attachToggle.classList.add('hidden'); // Sembunyikan toggle, paksakan file mode
+        attachToggle.classList.add('hidden');
         if (document.getElementById('selectShift')) document.getElementById('selectShift').value = '-';
-        window.setAttachType('file'); // Paksa Mode File Upload
+        window.setAttachType('file');
     }
 };
 
@@ -215,19 +220,15 @@ window.setAttachType = function(type) {
     const labelAttachment = document.getElementById('labelAttachment');
 
     if (type === 'camera') {
-        // TAMPILKAN MODE KAMERA (Clock In / Clock Out)
         if (containerCam) containerCam.classList.remove('hidden');
         if (cameraHeaderRow) cameraHeaderRow.classList.remove('hidden');
         if (containerFile) containerFile.classList.add('hidden');
         if (labelAttachment) labelAttachment.innerHTML = 'Lampiran Foto Selfie <span class="text-red-500">*</span>';
     } else {
-        // TAMPILKAN MODE FILE DOKUMEN (Pengajuan Cuti/Sakit/Izin)
         if (containerFile) containerFile.classList.remove('hidden');
         if (containerCam) containerCam.classList.add('hidden');
-        if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden'); // <- Sembunyikan header & tombol kamera!
+        if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (labelAttachment) labelAttachment.innerHTML = 'Lampiran Bukti Dokumen <span class="text-red-500">*</span>';
-        
-        // Matikan stream kamera jika sedang menyala
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
     }
 };
@@ -242,9 +243,6 @@ window.initGeolocation = function() {
     GeoService.initGeolocation('gpsLocationText');
 };
 
-// -------------------------------------------------------------------------
-// CAMERA & FILE HANDLERS
-// -------------------------------------------------------------------------
 window.toggleCameraPower = async function() {
     await CameraService.toggleCamera('webcam', 'btnToggleCamera');
 };
@@ -272,7 +270,6 @@ window.handleFileSelected = function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validasi Ekstensi File Dokumen
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
         showToast('Format file harus PDF, JPG, atau PNG!', 'error');
@@ -304,7 +301,7 @@ window.clearSelectedFile = function() {
 };
 
 // -------------------------------------------------------------------------
-// SUBMIT PRESENSI WITH LEAVE VALIDATION
+// SUBMIT PRESENSI WITH STRICT DOUBLE-SUBMIT PREVENTION
 // -------------------------------------------------------------------------
 window.submitPresensi = async function() {
     if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
@@ -323,7 +320,15 @@ window.submitPresensi = async function() {
         return;
     }
 
-    // VALIDASI SISA CUTI TAHUNAN
+    // CEK IN-MEMORY CACHE UNTUK DOUBLE CLOCK IN DISINI!
+    const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
+    const lastStatusCached = localEmployeeStatusCache[cacheKey] || 'Belum Absen';
+
+    if (currentMode === 'Clock In' && (lastStatusCached === 'Clock In' || lastStatusCached.includes('Clock In'))) {
+        showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock In hari ini!`, 'error');
+        return;
+    }
+
     if (currentMode === 'Pengajuan' && jenisPengajuan.includes('Cuti')) {
         if (selectedEmployeeSisaCuti <= 0) {
             showToast(`❌ Sisa Cuti Tahunan ${karyawanNama} sudah habis (0 Hari)!`, 'error');
@@ -349,17 +354,11 @@ window.submitPresensi = async function() {
     btnText.textContent = 'MEMVALIDASI...';
 
     try {
-        const lastStatus = await ApiService.checkTodayStatus(karyawanNama, storeNama);
         let isAnomaly = false;
         let finalStatusFormatted = (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan}` : currentMode;
         let approvalDefault = finalStatusFormatted.includes("Pengajuan") ? "Pending" : "Auto-Approved";
 
-        if (currentMode === 'Clock In' && (lastStatus === 'Clock In' || lastStatus.includes('Clock In'))) {
-            showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock In hari ini!`, 'error');
-            return;
-        }
-
-        if (currentMode === 'Clock Out' && lastStatus === 'Belum Absen') {
+        if (currentMode === 'Clock Out' && lastStatusCached === 'Belum Absen') {
             isAnomaly = true;
             finalStatusFormatted = 'Clock Out (Tanpa Clock In)';
             approvalDefault = 'Anomali - Butuh Koreksi';
@@ -371,8 +370,8 @@ window.submitPresensi = async function() {
 
         const supabasePayload = {
             timestamp: isoTimestamp,
-            nama_store: storeNama,
-            nama_karyawan: karyawanNama,
+            nama_store: storeNama.trim(),
+            nama_karyawan: karyawanNama.trim(),
             jam_shift: (currentMode === 'Pengajuan') ? '-' : shiftNama,
             status_absen: finalStatusFormatted,
             jenis_pengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
@@ -386,17 +385,20 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
+        // KUNCI DAN UPDATE CACHE STATISTIK PERSISTEN LOKAL SECARA INSTAN!
+        localEmployeeStatusCache[cacheKey] = finalStatusFormatted;
+        updateBadgeStatus(finalStatusFormatted);
+
         showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
         document.getElementById('textCatatan').value = '';
         window.clearSelectedFile();
         window.resetCamera();
-        await window.onKaryawanChange();
 
         ApiService.submitToAppsScriptBackground({
             supabaseId: createdRecordId,
             timestamp: isoTimestamp,
-            storeNama: storeNama,
-            karyawanNama: karyawanNama,
+            storeNama: storeNama.trim(),
+            karyawanNama: karyawanNama.trim(),
             shiftNama: (currentMode === 'Pengajuan') ? '-' : shiftNama,
             status: finalStatusFormatted,
             jenisPengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
@@ -471,7 +473,7 @@ function renderHrLogsTable(logs) {
 
         let badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600">${escapeHtml(row.status_approval_hr)}</span>`;
         if (row.is_anomaly || (row.status_approval_hr && row.status_approval_hr.includes('Anomali'))) {
-            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-sm">⚠️️ ANOMALI</span>`;
+            badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-sm">⚠️ ANOMALI</span>`;
         } else if (row.status_approval_hr === 'DI ACC' || row.status_approval_hr === 'Auto-Approved') {
             badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">DI ACC</span>`;
         } else if (row.status_approval_hr === 'DI REJECT') {
@@ -509,7 +511,7 @@ function renderHrLogsTable(logs) {
 window.approveAction = async function(recordId, karyawanNama, jenisPengajuan) {
     if (!confirm(`ACC pengajuan / koreksi untuk ${karyawanNama}?`)) return;
     await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan });
-    showToast('Approval Berhasil & Sisa Cuti Diperbarui!', 'success');
+    showToast('Approval Berhasil!', 'success');
     window.loadHrLogs();
 };
 

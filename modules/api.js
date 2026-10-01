@@ -1,6 +1,6 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - HIGH-PERFORMANCE SUPABASE PIPELINE
-// Parallel Execution, Anti-Cache Headers, & Direct Server Synchronization
+// MODULE: API SERVICE (modules/api.js) - FIXED POSTGREST QUERY & NO-STORE
+// Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -9,12 +9,9 @@ const SUPABASE_URL = CONFIG.SUPABASE_URL;
 const SUPABASE_KEY = CONFIG.SUPABASE_KEY;
 const SCRIPT_URL = CONFIG.SCRIPT_URL;
 
-// Header standar anti-cache untuk memaksa Supabase selalu mengembalikan data paling fresh
-const GET_HEADERS = {
+const HEADERS = {
     'apikey': SUPABASE_KEY,
-    'Authorization': `Bearer ${SUPABASE_KEY}`,
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache'
+    'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
 const HARDCODED_STORES = [
@@ -47,12 +44,11 @@ export const ApiService = {
         return { startIso, endIso };
     },
 
-    // 1. Fetch Master Data (Anti-Cache)
     async fetchMasterData() {
         try {
             const [resStore, resEmp] = await Promise.all([
-                fetch(`${SUPABASE_URL}/rest/v1/stores?select=id,nama_store`, { headers: GET_HEADERS, cache: 'no-store' }),
-                fetch(`${SUPABASE_URL}/rest/v1/karyawan?select=id,store_id,nama_karyawan,jabatan,sisa_cuti`, { headers: GET_HEADERS, cache: 'no-store' })
+                fetch(`${SUPABASE_URL}/rest/v1/stores?select=*`, { headers: HEADERS, cache: 'no-store' }),
+                fetch(`${SUPABASE_URL}/rest/v1/karyawan?select=*`, { headers: HEADERS, cache: 'no-store' })
             ]);
 
             const storesData = resStore.ok ? await resStore.json() : [];
@@ -69,7 +65,7 @@ export const ApiService = {
         }
     },
 
-    // 2. Direct Real-time Check Today Status (Bypass Browser Cache Total)
+    // Pengecekan Status Presensi Supabase Tanpa Query Param Non-Kolom
     async checkTodayStatusDetail(karyawanNama, storeNama) {
         if (!karyawanNama || !storeNama) {
             return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
@@ -83,13 +79,16 @@ export const ApiService = {
             const cleanStore = storeNama.trim();
             const { startIso, endIso } = this.getWibDayBounds();
 
-            // Tambahkan timestamp acak (_t) pada URL agar browser tidak pernah menggunakan cache
-            const cacheBuster = Date.now();
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${encodeURIComponent(startIso)}&timestamp=lte.${encodeURIComponent(endIso)}&order=timestamp.desc&limit=10&_t=${cacheBuster}`;
+            // SINTAKS RESMI POSTGREST SUPABASE (Tanpa _t= parameter)
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${encodeURIComponent(startIso)}&timestamp=lte.${encodeURIComponent(endIso)}&order=timestamp.desc&limit=10`;
 
-            const res = await fetch(url, { headers: GET_HEADERS, cache: 'no-store' });
+            const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
 
-            if (!res.ok) throw new Error("Gagal mengambil status presensi");
+            if (!res.ok) {
+                const errDetail = await res.text();
+                console.error("Supabase Query Error:", errDetail);
+                throw new Error("Gagal mengambil status presensi");
+            }
             const data = await res.json();
 
             if (!data || data.length === 0) {
@@ -111,17 +110,16 @@ export const ApiService = {
                 approvalStatus: pengajuanRec ? pengajuanRec.status_approval_hr : lastRec.status_approval_hr
             };
         } catch (err) {
+            console.error("Check Today Status Catch Error:", err);
             return { status: 'ERROR_CHECKING', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
         }
     },
 
-    // 3. Submit Log Absensi
     async submitToSupabase(payload) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/log_absensi`, {
             method: 'POST',
             headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                ...HEADERS,
                 'Content-Type': 'application/json',
                 'Prefer': 'return=representation'
             },
@@ -133,12 +131,11 @@ export const ApiService = {
         return data[0] ? data[0].id : null;
     },
 
-    // 4. Potong Cuti Karyawan
     async deductLeaveBalance(karyawanNama, jumlahHari = 1) {
         try {
             const cleanEmp = karyawanNama.trim();
             const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, {
-                headers: GET_HEADERS,
+                headers: HEADERS,
                 cache: 'no-store'
             });
             if (!resEmp.ok) return;
@@ -151,8 +148,7 @@ export const ApiService = {
             await fetch(`${SUPABASE_URL}/rest/v1/karyawan?id=eq.${empData[0].id}`, {
                 method: 'PATCH',
                 headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    ...HEADERS,
                     'Content-Type': 'application/json',
                     'Prefer': 'return=representation'
                 },
@@ -181,16 +177,14 @@ export const ApiService = {
         return (pin === '1234' || pin === '8888') ? { status: 'success' } : { status: 'error' };
     },
 
-    // 5. Fetch HR Logs (Anti-Cache dengan Timestamp Parameter)
     async fetchHrLogs(startDate, endDate) {
         try {
             const startIso = encodeURIComponent(`${startDate}T00:00:00+07:00`);
             const endIso = encodeURIComponent(`${endDate}T23:59:59+07:00`);
-            const cacheBuster = Date.now();
 
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=500&_t=${cacheBuster}`;
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?timestamp=gte.${startIso}&timestamp=lte.${endIso}&order=timestamp.desc&limit=500`;
 
-            const res = await fetch(url, { headers: GET_HEADERS, cache: 'no-store' });
+            const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
 
             if (!res.ok) return [];
             return await res.json();
@@ -199,18 +193,15 @@ export const ApiService = {
         }
     },
 
-    // 6. Fast Approval Execution (Parallel Promise Execution)
     async updateApproval({ rowId, karyawanNama, approvalStatus, alasanReject, jenisPengajuan, jumlahHari }) {
         try {
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${rowId}`;
 
-            // Eksekusi Update Log & Potong Cuti Secara Sejajar (Parallel HTTP Requests)
             const tasks = [
                 fetch(url, {
                     method: 'PATCH',
                     headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        ...HEADERS,
                         'Content-Type': 'application/json',
                         'Prefer': 'return=representation'
                     },
@@ -237,7 +228,7 @@ export const ApiService = {
 
             return resLog.ok;
         } catch (err) {
-            console.error("Fast update approval error:", err);
+            console.error("Update approval error:", err);
             return false;
         }
     }

@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - STRICT SERVER SYNCHRONIZATION
-// Orchestrates UI Event Handlers, Anti-Cache Server Re-fetches, & State Locks
+// APP CONTROLLER (app.js) - STRICT STATE LOCK & FAST SERVER SYNC
+// Orchestrates UI Event Handlers, Dynamic Attachments & Server Re-fetches
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -75,7 +75,6 @@ window.addEventListener('beforeunload', () => {
     CameraService.stopWebcam('webcam', 'btnToggleCamera');
 });
 
-// SINKRONISASI REAL-TIME SAAT BERPINDAH TAB
 window.switchTab = async function(tab) {
     const salesSec = document.getElementById('tabSalesSection');
     const hrSec = document.getElementById('tabHrSection');
@@ -88,11 +87,10 @@ window.switchTab = async function(tab) {
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
         
-        // Bersihkan cache lokal & re-fetch data fresh dari Supabase
         localEmployeeDetailsCache = {};
         const freshData = await ApiService.fetchMasterData();
         masterKaryawan = freshData.karyawan || [];
-        await window.onKaryawanChange(true); // Forced Server Re-fetch
+        await window.onKaryawanChange(true);
     } else {
         salesSec.classList.add('hidden');
         hrSec.classList.remove('hidden');
@@ -169,7 +167,7 @@ window.onKaryawanChange = async function(forceServerCheck = false) {
     }
 
     isCheckingStatus = true;
-    badge.textContent = 'Mengecek Supabase...';
+    badge.textContent = 'Mengecek...';
     const detail = await ApiService.checkTodayStatusDetail(karyawanNama, storeNama);
     isCheckingStatus = false;
 
@@ -484,7 +482,7 @@ window.clearSelectedFile = function() {
 // SUBMIT PRESENSI WITH DIRECT SUPABASE SYNC
 // -------------------------------------------------------------------------
 window.submitPresensi = async function() {
-    if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
+    if (!navigator.onLine) return showToast('⚠️️ Koneksi terputus!', 'error');
     if (isCheckingStatus) return showToast('Mohon tunggu validasi...', 'error');
 
     const storeNama = document.getElementById('selectStore').value;
@@ -579,7 +577,6 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        // Clear cache & re-check status dari server
         localEmployeeDetailsCache = {};
         await window.onKaryawanChange(true);
 
@@ -613,7 +610,7 @@ window.submitPresensi = async function() {
 };
 
 // -------------------------------------------------------------------------
-// PORTAL HR HANDLERS WITH DIRECT SUPABASE RE-FETCH
+// PORTAL HR HANDLERS
 // -------------------------------------------------------------------------
 window.verifyHrPin = async function() {
     const pin = document.getElementById('inputHrPin').value;
@@ -720,17 +717,13 @@ function renderHrLogsTable(logs) {
     });
 }
 
-// APPROVAL SERTA MEMAKSA RE-FETCH SERVER SUPABASE
 window.approveAction = async function(recordId, karyawanNama, jenisPengajuan, jumlahHari) {
     if (!confirm(`ACC pengajuan / koreksi (${jumlahHari || 1} Hari) untuk ${karyawanNama}?`)) return;
 
-    // 1. Kirim update ke Supabase secara paralel (Fast Pipeline)
     const ok = await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan, jumlahHari });
 
     if (ok) {
         showToast('🎉 Approval Berhasil & Data Supabase Diperbarui!', 'success');
-        
-        // 2. Clear cache & paksa re-fetch data asli 100% dari Supabase Server
         localEmployeeDetailsCache = {};
         await window.loadHrLogs();
     } else {
@@ -760,8 +753,6 @@ window.confirmRejectAction = async function() {
 
     if (ok) {
         showToast('Penolakan Berhasil!', 'success');
-        
-        // Clear cache & paksa re-fetch data asli 100% dari Supabase Server
         localEmployeeDetailsCache = {};
         await window.loadHrLogs();
     } else {

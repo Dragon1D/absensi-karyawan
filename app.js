@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - COMPLETE STATE MACHINE & CAMERA LOCK
-// Handles Shift Locking, Anti-Double Clock In/Out, & Camera UI Locking
+// APP CONTROLLER (app.js) - STRICT PENGAJUAN & DYNAMIC LEAVE PREVIEW
+// Orchestrates UI Event Handlers, Dynamic Attachments & HR Approval
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -47,7 +47,6 @@ let isCheckingStatus = false;
 let hrLogsCache = [];
 let selectedEmployeeSisaCuti = 12;
 
-// CACHE STATE LOKAL HARIAN (hasClockIn, hasClockOut, clockInShift)
 let localEmployeeDetailsCache = {};
 
 async function initApp() {
@@ -140,7 +139,7 @@ window.onKaryawanChange = async function() {
         badge.textContent = 'Belum Dipilih';
         badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
         if (badgeCuti) badgeCuti.classList.add('hidden');
-        evaluateUiState({ status: 'Belum Dipilih', hasClockIn: false, hasClockOut: false, clockInShift: null });
+        evaluateUiState({ status: 'Belum Dipilih', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null });
         return;
     }
 
@@ -152,6 +151,8 @@ window.onKaryawanChange = async function() {
         badgeCuti.className = `px-2.5 py-1 rounded-full text-xs font-bold ${selectedEmployeeSisaCuti > 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-red-100 text-red-700'}`;
         badgeCuti.classList.remove('hidden');
     }
+
+    window.calculateLeavePreview();
 
     const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
     if (localEmployeeDetailsCache[cacheKey]) {
@@ -173,41 +174,86 @@ window.onKaryawanChange = async function() {
     }
 };
 
-// EVALUASI & KUNCI ELEMEN UI BERDASARKAN STATUS SALES
+window.onJenisPengajuanChange = function() {
+    const jenis = document.getElementById('selectJenisPengajuan').value;
+    const containerHari = document.getElementById('containerJumlahHari');
+
+    if (jenis.includes('Cuti')) {
+        containerHari.classList.remove('hidden');
+        window.calculateLeavePreview();
+    } else {
+        containerHari.classList.add('hidden');
+    }
+};
+
+window.calculateLeavePreview = function() {
+    const inputHari = document.getElementById('inputJumlahHari');
+    const previewText = document.getElementById('leaveCalcPreview');
+    if (!inputHari || !previewText) return;
+
+    let requestedDays = parseInt(inputHari.value) || 1;
+    if (requestedDays < 1) {
+        requestedDays = 1;
+        inputHari.value = 1;
+    }
+
+    const estRemaining = selectedEmployeeSisaCuti - requestedDays;
+    if (estRemaining >= 0) {
+        previewText.innerHTML = `Estimasi Sisa Cuti Setelah ACC: <strong class="text-indigo-800">${estRemaining} Hari</strong>`;
+        previewText.className = 'text-[11px] font-medium text-indigo-700 mt-1.5';
+    } else {
+        previewText.innerHTML = `⚠️ Melebihi Kuota! Kurang: <strong class="text-red-700">${Math.abs(estRemaining)} Hari</strong>`;
+        previewText.className = 'text-[11px] font-bold text-red-600 mt-1.5';
+    }
+};
+
 function evaluateUiState(detail) {
     const badge = document.getElementById('badgeLiveStatus');
     const selectShift = document.getElementById('selectShift');
     const st = detail.status;
 
-    // 1. Update Text Badge
     badge.textContent = st === 'OFFLINE_UNKNOWN' ? 'Offline' : st;
     if (st === 'Clock In' || st.includes('Clock In')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700';
     else if (st === 'Clock Out' || st.includes('Clock Out')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700';
     else if (st.includes('Pengajuan')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700';
     else badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
 
-    // 2. Kunci Dropdown Shift jika Pindah ke Clock Out & Sudah Clock In Awal
     if (currentMode === 'Clock Out' && detail.hasClockIn && detail.clockInShift) {
         if (selectShift) {
             selectShift.value = detail.clockInShift;
-            selectShift.disabled = true; // LOCK SHIFT DROPDOWN!
+            selectShift.disabled = true;
             selectShift.classList.add('bg-gray-200', 'cursor-not-allowed');
         }
     } else {
         if (selectShift) {
-            selectShift.disabled = false; // UNLOCK
+            selectShift.disabled = false;
             selectShift.classList.remove('bg-gray-200', 'cursor-not-allowed');
         }
     }
 
-    // 3. KUNCI KAMERA JIKA SUDAH CLOCK IN & TETAP DI MODE CLOCK IN
     const cameraHeaderRow = document.getElementById('cameraHeaderRow');
     const containerCam = document.getElementById('containerCamera');
+    const containerFile = document.getElementById('containerFileUpload');
     const btnSubmit = document.getElementById('btnSubmitPresensi');
     const cameraLockNotice = document.getElementById('cameraLockNotice');
 
-    if (currentMode === 'Clock In' && detail.hasClockIn) {
-        // Matikan kamera & sembunyikan kontrol kamera saat di mode Clock In padahal sudah Clock In
+    if (currentMode === 'Pengajuan' && detail.hasPengajuan) {
+        if (containerFile) containerFile.classList.add('hidden');
+        if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
+        if (containerCam) containerCam.classList.add('hidden');
+
+        if (cameraLockNotice) {
+            cameraLockNotice.innerHTML = `
+                <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1">
+                    <div class="text-xs font-bold text-amber-800"><i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Pengajuan Sudah Terkirim Hari Ini</div>
+                    <div class="text-[11px] text-amber-700">Pengajuan <strong>${detail.pengajuanType || 'Cuti/Sakit'}</strong> Anda telah diterima dan sedang dalam proses persetujuan oleh HR Admin (Status: <strong>${detail.approvalStatus || 'Pending'}</strong>).</div>
+                </div>
+            `;
+            cameraLockNotice.classList.remove('hidden');
+        }
+        if (btnSubmit) btnSubmit.disabled = true;
+
+    } else if (currentMode === 'Clock In' && detail.hasClockIn) {
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
         if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (containerCam) containerCam.classList.add('hidden');
@@ -215,14 +261,14 @@ function evaluateUiState(detail) {
             cameraLockNotice.innerHTML = `
                 <div class="p-4 bg-green-50 border border-green-200 rounded-2xl text-center space-y-1">
                     <div class="text-xs font-bold text-green-800"><i class="fa-solid fa-circle-check mr-1.5"></i> Anda Sudah Clock In Hari Ini</div>
-                    <div class="text-[11px] text-green-600">Pilihan shift terunci: <strong>${detail.clockInShift || '-'}</strong>. Silakan klik tombol <strong>Clock Out</strong> di atas saat jam pulang sekolah/toko.</div>
+                    <div class="text-[11px] text-green-600">Pilihan shift terunci: <strong>${detail.clockInShift || '-'}</strong>. Silakan klik tombol <strong>Clock Out</strong> di atas saat jam pulang toko.</div>
                 </div>
             `;
             cameraLockNotice.classList.remove('hidden');
         }
         if (btnSubmit) btnSubmit.disabled = true;
+
     } else if (currentMode === 'Clock Out' && detail.hasClockOut) {
-        // Matikan kamera jika sudah Clock Out lengkap hari ini
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
         if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (containerCam) containerCam.classList.add('hidden');
@@ -236,8 +282,8 @@ function evaluateUiState(detail) {
             cameraLockNotice.classList.remove('hidden');
         }
         if (btnSubmit) btnSubmit.disabled = true;
+
     } else {
-        // Buka kembali kamera untuk Mode Clock Out (yang belum Clock Out) atau Mode Pengajuan
         if (cameraLockNotice) cameraLockNotice.classList.add('hidden');
         if (btnSubmit) btnSubmit.disabled = false;
         
@@ -273,13 +319,13 @@ window.setAbsenMode = function(mode) {
         secPeng.classList.remove('hidden');
         attachToggle.classList.add('hidden');
         if (document.getElementById('selectShift')) document.getElementById('selectShift').value = '-';
+        window.onJenisPengajuanChange();
     }
 
-    // Re-evaluate UI state saat tombol mode diklik
     const karyawanNama = document.getElementById('selectKaryawan').value;
     const storeNama = document.getElementById('selectStore').value;
     const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
-    const detail = localEmployeeDetailsCache[cacheKey] || { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
+    const detail = localEmployeeDetailsCache[cacheKey] || { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
     
     evaluateUiState(detail);
 };
@@ -373,7 +419,7 @@ window.clearSelectedFile = function() {
 };
 
 // -------------------------------------------------------------------------
-// SUBMIT PRESENSI WITH STRICT DOUBLE CLOCK IN & DOUBLE CLOCK OUT LOCK
+// SUBMIT PRESENSI WITH DYNAMIC LEAVE VALIDATION & PENGAJUAN LOCK
 // -------------------------------------------------------------------------
 window.submitPresensi = async function() {
     if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
@@ -394,23 +440,31 @@ window.submitPresensi = async function() {
     }
 
     const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
-    const detailCached = localEmployeeDetailsCache[cacheKey] || { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
+    const detailCached = localEmployeeDetailsCache[cacheKey] || { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
 
-    // 1. BLOKIR DOUBLE CLOCK IN
     if (currentMode === 'Clock In' && detailCached.hasClockIn) {
         showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock In hari ini!`, 'error');
         return;
     }
 
-    // 2. BLOKIR DOUBLE CLOCK OUT
     if (currentMode === 'Clock Out' && detailCached.hasClockOut) {
         showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock Out hari ini!`, 'error');
         return;
     }
 
+    if (currentMode === 'Pengajuan' && detailCached.hasPengajuan) {
+        showToast(`⚠️ Sales ${karyawanNama} SUDAH mengajukan cuti/sakit/izin hari ini!`, 'error');
+        return;
+    }
+
+    // VALIDASI DURASI HARI CUTI vs SISA CUTI
+    let jumlahHariPengajuan = 1;
     if (currentMode === 'Pengajuan' && jenisPengajuan.includes('Cuti')) {
-        if (selectedEmployeeSisaCuti <= 0) {
-            showToast(`❌ Sisa Cuti Tahunan ${karyawanNama} sudah habis (0 Hari)!`, 'error');
+        const inputHariElem = document.getElementById('inputJumlahHari');
+        jumlahHariPengajuan = parseInt(inputHariElem ? inputHariElem.value : 1) || 1;
+
+        if (jumlahHariPengajuan > selectedEmployeeSisaCuti) {
+            showToast(`❌ Jumlah hari cuti (${jumlahHariPengajuan}) melebihi sisa cuti tersedia (${selectedEmployeeSisaCuti} Hari)!`, 'error');
             return;
         }
     }
@@ -434,7 +488,7 @@ window.submitPresensi = async function() {
 
     try {
         let isAnomaly = false;
-        let finalStatusFormatted = (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan}` : currentMode;
+        let finalStatusFormatted = (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan} (${jumlahHariPengajuan} Hari)` : currentMode;
         let approvalDefault = finalStatusFormatted.includes("Pengajuan") ? "Pending" : "Auto-Approved";
 
         if (currentMode === 'Clock Out' && !detailCached.hasClockIn) {
@@ -453,7 +507,7 @@ window.submitPresensi = async function() {
             nama_karyawan: karyawanNama.trim(),
             jam_shift: (currentMode === 'Pengajuan') ? '-' : shiftNama,
             status_absen: finalStatusFormatted,
-            jenis_pengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
+            jenis_pengajuan: (currentMode === 'Pengajuan') ? `${jenisPengajuan} (${jumlahHariPengajuan} Hari)` : '-',
             catatan_keterangan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In' : '-'),
             lokasi_gps: GeoService.getCoords(),
             foto_drive_url: "Uploading Drive...",
@@ -464,7 +518,6 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        // UPDATE CACHE PERSISTEN SECARA INSTAN
         if (currentMode === 'Clock In') {
             detailCached.hasClockIn = true;
             detailCached.clockInShift = shiftNama;
@@ -472,18 +525,20 @@ window.submitPresensi = async function() {
         } else if (currentMode === 'Clock Out') {
             detailCached.hasClockOut = true;
             detailCached.status = 'Clock Out';
-        } else {
+        } else if (currentMode === 'Pengajuan') {
+            detailCached.hasPengajuan = true;
+            detailCached.pengajuanType = `${jenisPengajuan} (${jumlahHariPengajuan} Hari)`;
+            detailCached.approvalStatus = 'Pending';
             detailCached.status = finalStatusFormatted;
         }
 
         localEmployeeDetailsCache[cacheKey] = detailCached;
 
-        showToast('🎉 Presensi Berhasil Tersimpan!', 'success');
+        showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
         document.getElementById('textCatatan').value = '';
         window.clearSelectedFile();
         window.resetCamera();
 
-        // Kunci UI otomatis setelah submit berhasil
         evaluateUiState(detailCached);
 
         ApiService.submitToAppsScriptBackground({
@@ -493,7 +548,7 @@ window.submitPresensi = async function() {
             karyawanNama: karyawanNama.trim(),
             shiftNama: (currentMode === 'Pengajuan') ? '-' : shiftNama,
             status: finalStatusFormatted,
-            jenisPengajuan: (currentMode === 'Pengajuan') ? jenisPengajuan : '-',
+            jenisPengajuan: (currentMode === 'Pengajuan') ? `${jenisPengajuan} (${jumlahHariPengajuan} Hari)` : '-',
             catatan: catatan || (isAnomaly ? 'Anomali: Clock Out tanpa Clock In' : '-'),
             gps: GeoService.getCoords(),
             fileBase64: fileDataToSend,
@@ -563,7 +618,7 @@ function renderHrLogsTable(logs) {
         tr.className = "hover:bg-gray-50 transition border-b border-gray-100";
         const dateFormatted = new Date(row.timestamp).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) + " WIB";
 
-        let badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-600">${escapeHtml(row.status_approval_hr)}</span>`;
+        let badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">PENDING</span>`;
         if (row.is_anomaly || (row.status_approval_hr && row.status_approval_hr.includes('Anomali'))) {
             badgeApproval = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white shadow-sm">⚠️ ANOMALI</span>`;
         } else if (row.status_approval_hr === 'DI ACC' || row.status_approval_hr === 'Auto-Approved') {
@@ -579,6 +634,13 @@ function renderHrLogsTable(logs) {
             fileBtnHtml = `<span class="text-amber-600 text-[10px] font-semibold animate-pulse">Proses Drive...</span>`;
         }
 
+        // Ekstrak jumlah hari dari string jenis_pengajuan jika ada
+        let extractedDays = 1;
+        if (row.jenis_pengajuan && row.jenis_pengajuan.includes('Hari')) {
+            const match = row.jenis_pengajuan.match(/\((\d+)\s*Hari\)/);
+            if (match) extractedDays = parseInt(match[1]);
+        }
+
         tr.innerHTML = `
             <td class="p-3 font-mono text-[11px] whitespace-nowrap">${dateFormatted}</td>
             <td class="p-3">
@@ -592,7 +654,7 @@ function renderHrLogsTable(logs) {
             <td class="p-3">${fileBtnHtml}</td>
             <td class="p-3">${badgeApproval}</td>
             <td class="p-3 text-center space-x-1 whitespace-nowrap">
-                <button onclick="approveAction(${row.id}, '${escapeHtml(row.nama_karyawan)}', '${escapeHtml(row.jenis_pengajuan)}')" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
+                <button onclick="approveAction(${row.id}, '${escapeHtml(row.nama_karyawan)}', '${escapeHtml(row.jenis_pengajuan)}', ${extractedDays})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
                 <button onclick="openRejectModal(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
             </td>
         `;
@@ -600,10 +662,10 @@ function renderHrLogsTable(logs) {
     });
 }
 
-window.approveAction = async function(recordId, karyawanNama, jenisPengajuan) {
-    if (!confirm(`ACC pengajuan / koreksi untuk ${karyawanNama}?`)) return;
-    await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan });
-    showToast('Approval Berhasil!', 'success');
+window.approveAction = async function(recordId, karyawanNama, jenisPengajuan, jumlahHari) {
+    if (!confirm(`ACC pengajuan / koreksi (${jumlahHari || 1} Hari) untuk ${karyawanNama}?`)) return;
+    await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan, jumlahHari });
+    showToast('Approval Berhasil & Sisa Cuti Diperbarui!', 'success');
     window.loadHrLogs();
 };
 

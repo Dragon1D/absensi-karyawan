@@ -91,6 +91,8 @@ window.switchTab = function(tab) {
         hrSec.classList.remove('hidden');
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
+        
+        // Mati kamera saat pindah ke Tab HR
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
     }
 };
@@ -204,14 +206,15 @@ window.initGeolocation = function() {
 };
 
 // -------------------------------------------------------------------------
-// CAMERA HANDLERS (ON/OFF TOGGLE & ANTI-GEPENG)
+// CAMERA HANDLERS (ENTERPRISE WATERMARK & ASYNC GUARD)
 // -------------------------------------------------------------------------
 window.toggleCameraPower = async function() {
     await CameraService.toggleCamera('webcam', 'btnToggleCamera');
 };
 
-window.takeSnapshot = function() {
-    const result = CameraService.takeSnapshot('webcam', 'photoCanvas');
+window.takeSnapshot = async function() {
+    const gpsCoords = GeoService.getCoords();
+    const result = await CameraService.takeSnapshot('webcam', 'photoCanvas', gpsCoords);
     if (result) {
         document.getElementById('webcam').classList.add('hidden');
         document.getElementById('photoCanvas').classList.remove('hidden');
@@ -221,7 +224,7 @@ window.takeSnapshot = function() {
 };
 
 window.resetCamera = function() {
-    CameraService.resetCamera();
+    CameraService.resetCamera('photoCanvas');
     document.getElementById('photoCanvas').classList.add('hidden');
     document.getElementById('webcam').classList.remove('hidden');
     document.getElementById('btnCapture').classList.remove('hidden');

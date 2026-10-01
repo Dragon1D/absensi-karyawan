@@ -60,7 +60,7 @@ async function initApp() {
 
     // Init GPS & Camera
     GeoService.initGeolocation('gpsLocationText');
-    CameraService.startWebcam('webcam', 'photoCanvas', 'btnCapture', 'btnRetake');
+   // CameraService.startWebcam('webcam', 'photoCanvas', 'btnCapture', 'btnRetake');
 }
 
 if (document.readyState === 'loading') {
@@ -81,6 +81,10 @@ window.switchTab = function(tab) {
     const hrSec = document.getElementById('tabHrSection');
     const salesBtn = document.getElementById('tabSalesBtn');
     const hrBtn = document.getElementById('tabHrBtn');
+    
+    window.toggleCameraPower = async function() {
+    await CameraService.toggleCamera('webcam', 'btnToggleCamera');
+};
 
     if (tab === 'sales') {
         salesSec.classList.remove('hidden');
@@ -207,12 +211,23 @@ window.initGeolocation = function() {
 };
 
 window.takeSnapshot = function() {
-    CameraService.takeSnapshot('webcam', 'photoCanvas', 'btnCapture', 'btnRetake');
+    const result = CameraService.takeSnapshot('webcam', 'photoCanvas');
+    if (result) {
+        document.getElementById('webcam').classList.add('hidden');
+        document.getElementById('photoCanvas').classList.remove('hidden');
+        document.getElementById('btnCapture').classList.add('hidden');
+        document.getElementById('btnRetake').classList.remove('hidden');
+    }
 };
 
 window.resetCamera = function() {
-    CameraService.resetCamera('webcam', 'photoCanvas', 'btnCapture', 'btnRetake');
+    CameraService.resetCamera();
+    document.getElementById('photoCanvas').classList.add('hidden');
+    document.getElementById('webcam').classList.remove('hidden');
+    document.getElementById('btnCapture').classList.remove('hidden');
+    document.getElementById('btnRetake').classList.add('hidden');
 };
+
 
 window.handleFileSelected = function(event) {
     const file = event.target.files[0];

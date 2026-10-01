@@ -211,13 +211,23 @@ window.setAttachType = function(type) {
     currentAttachType = type;
     const containerCam = document.getElementById('containerCamera');
     const containerFile = document.getElementById('containerFileUpload');
+    const cameraHeaderRow = document.getElementById('cameraHeaderRow');
+    const labelAttachment = document.getElementById('labelAttachment');
 
     if (type === 'camera') {
-        containerCam.classList.remove('hidden');
-        containerFile.classList.add('hidden');
+        // TAMPILKAN MODE KAMERA (Clock In / Clock Out)
+        if (containerCam) containerCam.classList.remove('hidden');
+        if (cameraHeaderRow) cameraHeaderRow.classList.remove('hidden');
+        if (containerFile) containerFile.classList.add('hidden');
+        if (labelAttachment) labelAttachment.innerHTML = 'Lampiran Foto Selfie <span class="text-red-500">*</span>';
     } else {
-        containerFile.classList.remove('hidden');
-        containerCam.classList.add('hidden');
+        // TAMPILKAN MODE FILE DOKUMEN (Pengajuan Cuti/Sakit/Izin)
+        if (containerFile) containerFile.classList.remove('hidden');
+        if (containerCam) containerCam.classList.add('hidden');
+        if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden'); // <- Sembunyikan header & tombol kamera!
+        if (labelAttachment) labelAttachment.innerHTML = 'Lampiran Bukti Dokumen <span class="text-red-500">*</span>';
+        
+        // Matikan stream kamera jika sedang menyala
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
     }
 };

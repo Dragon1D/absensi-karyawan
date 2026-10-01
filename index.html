@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Absensi Store v8.2</title>
+    <title>Portal Absensi Store v8.3</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
@@ -25,7 +25,7 @@
                 </div>
                 <div>
                     <h1 class="text-base font-bold text-gray-900 leading-tight">Portal Absensi Store</h1>
-                    <p class="text-xs text-gray-500 font-medium">v8.2 Strict State Machine</p>
+                    <p class="text-xs text-gray-500 font-medium">v8.3 Dynamic Leave Calculation</p>
                 </div>
             </div>
 
@@ -120,13 +120,27 @@
                 </div>
 
                 <!-- Section Input Pengajuan (Tampil pada Mode Pengajuan) -->
-                <div id="sectionPengajuan" class="hidden">
-                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Jenis Pengajuan <span class="text-red-500">*</span></label>
-                    <select id="selectJenisPengajuan" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium transition">
-                        <option value="Sakit (Surat Dokter)">Sakit (Wajib Surat Dokter)</option>
-                        <option value="Cuti Tahunan">Cuti Tahunan (Memotong Kuota)</option>
-                        <option value="Izin Khusus / Darurat">Izin Khusus / Darurat</option>
-                    </select>
+                <div id="sectionPengajuan" class="hidden space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Jenis Pengajuan <span class="text-red-500">*</span></label>
+                        <select id="selectJenisPengajuan" onchange="onJenisPengajuanChange()" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium transition">
+                            <option value="Sakit (Surat Dokter)">Sakit (Wajib Surat Dokter)</option>
+                            <option value="Cuti Tahunan">Cuti Tahunan (Memotong Kuota)</option>
+                            <option value="Izin Khusus / Darurat">Izin Khusus / Darurat</option>
+                        </select>
+                    </div>
+
+                    <!-- Input Durasi Hari Cuti & Kalkulator Real-time -->
+                    <div id="containerJumlahHari" class="hidden bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                        <label class="block text-xs font-semibold text-indigo-900 mb-1">Durasi Cuti yang Diajukan <span class="text-red-500">*</span></label>
+                        <div class="flex items-center space-x-2">
+                            <input type="number" id="inputJumlahHari" min="1" max="12" value="1" oninput="calculateLeavePreview()" class="w-24 bg-white border border-gray-200 text-gray-900 text-xs rounded-xl p-2.5 font-bold text-center focus:ring-2 focus:ring-indigo-500">
+                            <span class="text-xs font-bold text-gray-600">Hari Kerja</span>
+                        </div>
+                        <div id="leaveCalcPreview" class="text-[11px] font-medium text-indigo-700 mt-1.5">
+                            Estimasi Sisa Cuti Setelah ACC: <strong>11 Hari</strong>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Catatan / Keterangan -->
@@ -140,24 +154,18 @@
 
                 <!-- Section Lampiran Bukti Dokumen / Kamera -->
                 <div class="pt-2 border-t border-gray-100">
-                    
-                    <!-- Label Lampiran Dinamis -->
                     <div class="flex justify-between items-center mb-2">
                         <label id="labelAttachment" class="block text-xs font-semibold text-gray-700">
                             Lampiran Foto Selfie <span class="text-red-500">*</span>
                         </label>
-
-                        <!-- Toggle Manual Mode Lampiran (Hidden by Default) -->
                         <div id="attachTypeToggle" class="hidden bg-gray-100 p-0.5 rounded-lg text-[10px] font-bold">
                             <button type="button" id="toggleCamBtn" onclick="setAttachType('camera')" class="px-2.5 py-1 rounded-md bg-white text-indigo-600 shadow-sm">Kamera</button>
                             <button type="button" id="toggleFileBtn" onclick="setAttachType('file')" class="px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-900">Upload File</button>
                         </div>
                     </div>
 
-                    <!-- Banner Informasi Kamera Terkunci -->
                     <div id="cameraLockNotice" class="hidden mb-3"></div>
 
-                    <!-- Header Kontrol Kamera (Kamera Selfie & Tombol Power) -->
                     <div id="cameraHeaderRow" class="flex justify-between items-center mb-2">
                         <span class="text-xs font-semibold text-gray-600">Preview Kamera</span>
                         <button type="button" id="btnToggleCamera" onclick="toggleCameraPower()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition">
@@ -165,12 +173,9 @@
                         </button>
                     </div>
 
-                    <!-- Kontainer Preview Kamera Selfie -->
                     <div id="containerCamera" class="relative">
                         <video id="webcam" autoplay playsinline class="w-full h-52 bg-black rounded-2xl object-cover shadow-inner"></video>
                         <canvas id="photoCanvas" class="hidden w-full h-52 rounded-2xl object-cover shadow-inner"></canvas>
-                        
-                        <!-- Overlay Action Buttons Kamera -->
                         <div class="mt-2.5 flex justify-end">
                             <button type="button" id="btnCapture" onclick="takeSnapshot()" class="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md transition">
                                 <i class="fa-solid fa-circle-dot mr-1.5"></i> Ambil Foto Selfie
@@ -181,7 +186,6 @@
                         </div>
                     </div>
 
-                    <!-- Kontainer Upload File Dokumen (Khusus Pengajuan Cuti/Sakit) -->
                     <div id="containerFileUpload" class="hidden">
                         <div class="border-2 border-dashed border-indigo-200 bg-indigo-50/50 rounded-2xl p-6 text-center hover:bg-indigo-50 transition cursor-pointer" onclick="document.getElementById('filePicker').click()">
                             <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-2 text-lg">
@@ -192,13 +196,11 @@
                             <input type="file" id="filePicker" onchange="handleFileSelected(event)" accept=".pdf,.png,.jpg,.jpeg" class="hidden">
                         </div>
 
-                        <!-- Preview Badge File Terpilih -->
                         <div id="filePreviewBadge" class="hidden mt-2.5 p-2.5 bg-indigo-100 text-indigo-800 rounded-xl text-xs font-bold flex justify-between items-center">
                             <span class="truncate pr-2 flex items-center"><i class="fa-solid fa-file-pdf mr-2 text-indigo-600"></i><span id="fileNameText">document.pdf</span></span>
                             <button type="button" onclick="clearSelectedFile()" class="text-red-600 hover:text-red-800 text-xs px-2 py-1 font-bold">Hapus</button>
                         </div>
                     </div>
-
                 </div>
 
                 <!-- Tombol Submit Utama -->
@@ -206,7 +208,6 @@
                     <i class="fa-solid fa-paper-plane"></i>
                     <span id="btnSubmitText">KIRIM PRESENSI SEKARANG</span>
                 </button>
-
             </div>
         </section>
 
@@ -214,8 +215,6 @@
         <!-- TAB 2: PORTAL HR ADMIN DASHBOARD                                   -->
         <!-- =================================================================== -->
         <section id="tabHrSection" class="hidden space-y-4">
-
-            <!-- Card Authentication PIN HR -->
             <div id="hrAuthCard" class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center max-w-sm mx-auto space-y-4">
                 <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-xl">
                     <i class="fa-solid fa-lock"></i>
@@ -230,10 +229,7 @@
                 </button>
             </div>
 
-            <!-- Dashboard Content Portal HR (Hidden Sampai PIN Valid) -->
             <div id="hrDashboardContent" class="hidden space-y-4">
-
-                <!-- Control Bar & Filters -->
                 <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div class="flex items-center space-x-2">
@@ -245,7 +241,6 @@
                         </button>
                     </div>
 
-                    <!-- Date & Search Filters -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[10px] font-semibold text-gray-500 mb-1">Dari Tanggal</label>
@@ -262,7 +257,6 @@
                     </div>
                 </div>
 
-                <!-- Tabel Rekap Presensi HR -->
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="max-h-[500px] overflow-y-auto">
                         <table class="w-full text-left border-collapse">
@@ -284,11 +278,8 @@
                         </table>
                     </div>
                 </div>
-
             </div>
-
         </section>
-
     </div>
 
     <!-- Modal Dialog Alasan Penolakan HR -->
@@ -309,7 +300,6 @@
         </div>
     </div>
 
-    <!-- Script Utama (ES Modules Entry Point) -->
     <script type="module" src="./app.js"></script>
 </body>
 </html>

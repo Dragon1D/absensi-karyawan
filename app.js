@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - INSTANT OPTIMISTIC HR APPROVAL & LEAVE SYNC
-// Orchestrates UI Event Handlers, Dynamic Attachments & Real-time State Lock
+// APP CONTROLLER (app.js) - STRICT SERVER SYNCHRONIZATION
+// Orchestrates UI Event Handlers, Anti-Cache Server Re-fetches, & State Locks
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -62,7 +62,7 @@ async function initApp() {
     GeoService.initGeolocation('gpsLocationText');
 
     window.addEventListener('online', () => showToast('🌐 Koneksi terhubung kembali.', 'success'));
-    window.addEventListener('offline', () => showToast('⚠️️ Koneksi terputus!', 'error'));
+    window.addEventListener('offline', () => showToast('⚠️ Koneksi terputus!', 'error'));
 }
 
 if (document.readyState === 'loading') {
@@ -75,7 +75,8 @@ window.addEventListener('beforeunload', () => {
     CameraService.stopWebcam('webcam', 'btnToggleCamera');
 });
 
-window.switchTab = function(tab) {
+// SINKRONISASI REAL-TIME SAAT BERPINDAH TAB
+window.switchTab = async function(tab) {
     const salesSec = document.getElementById('tabSalesSection');
     const hrSec = document.getElementById('tabHrSection');
     const salesBtn = document.getElementById('tabSalesBtn');
@@ -86,13 +87,19 @@ window.switchTab = function(tab) {
         hrSec.classList.add('hidden');
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
-        window.onKaryawanChange();
+        
+        // Bersihkan cache lokal & re-fetch data fresh dari Supabase
+        localEmployeeDetailsCache = {};
+        const freshData = await ApiService.fetchMasterData();
+        masterKaryawan = freshData.karyawan || [];
+        await window.onKaryawanChange(true); // Forced Server Re-fetch
     } else {
         salesSec.classList.add('hidden');
         hrSec.classList.remove('hidden');
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
+        await window.loadHrLogs();
     }
 };
 
@@ -130,7 +137,7 @@ window.onStoreChange = function() {
     });
 };
 
-window.onKaryawanChange = async function() {
+window.onKaryawanChange = async function(forceServerCheck = false) {
     const karyawanNama = document.getElementById('selectKaryawan').value;
     const storeNama = document.getElementById('selectStore').value;
     const badge = document.getElementById('badgeLiveStatus');
@@ -156,13 +163,13 @@ window.onKaryawanChange = async function() {
     window.calculateLeavePreview();
 
     const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
-    if (localEmployeeDetailsCache[cacheKey]) {
+    if (!forceServerCheck && localEmployeeDetailsCache[cacheKey]) {
         evaluateUiState(localEmployeeDetailsCache[cacheKey]);
         return;
     }
 
     isCheckingStatus = true;
-    badge.textContent = 'Mengecek...';
+    badge.textContent = 'Mengecek Supabase...';
     const detail = await ApiService.checkTodayStatusDetail(karyawanNama, storeNama);
     isCheckingStatus = false;
 
@@ -271,11 +278,29 @@ function evaluateUiState(detail) {
         if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (containerCam) containerCam.classList.add('hidden');
 
+        const appStatus = detail.approvalStatus || 'Pending';
+        let bannerBg = 'bg-amber-50 border-amber-200 text-amber-800';
+        let statusBadge = `<span class="font-bold text-amber-700">Pending</span>`;
+        let icon = '<i class="fa-solid fa-clock-rotate-left mr-1.5 text-amber-600"></i>';
+        let titleMsg = 'Pengajuan Sudah Terkirim Hari Ini';
+
+        if (appStatus === 'DI ACC' || appStatus === 'Auto-Approved' || appStatus === 'Approved') {
+            bannerBg = 'bg-green-50 border-green-200 text-green-800';
+            statusBadge = `<span class="font-bold text-green-700">DI ACC</span>`;
+            icon = '<i class="fa-solid fa-circle-check mr-1.5 text-green-600"></i>';
+            titleMsg = 'Pengajuan Telah Disetujui HR';
+        } else if (appStatus === 'DI REJECT' || appStatus === 'Rejected') {
+            bannerBg = 'bg-red-50 border-red-200 text-red-800';
+            statusBadge = `<span class="font-bold text-red-700">DI REJECT</span>`;
+            icon = '<i class="fa-solid fa-circle-xmark mr-1.5 text-red-600"></i>';
+            titleMsg = 'Pengajuan Ditolak HR';
+        }
+
         if (cameraLockNotice) {
             cameraLockNotice.innerHTML = `
-                <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-1">
-                    <div class="text-xs font-bold text-amber-800"><i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Pengajuan Sudah Terkirim Hari Ini</div>
-                    <div class="text-[11px] text-amber-700">Pengajuan <strong>${detail.pengajuanType || 'Cuti/Sakit'}</strong> Anda telah diterima (Status: <strong>${detail.approvalStatus || 'Pending'}</strong>). Form pengajuan telah dikunci.</div>
+                <div class="p-4 ${bannerBg} border rounded-2xl text-center space-y-1 shadow-sm">
+                    <div class="text-xs font-bold">${icon} ${titleMsg}</div>
+                    <div class="text-[11px]">Pengajuan <strong>${detail.pengajuanType || 'Cuti/Sakit'}</strong> Anda (Status: ${statusBadge}). Form pengajuan telah dikunci.</div>
                 </div>
             `;
             cameraLockNotice.classList.remove('hidden');
@@ -456,10 +481,10 @@ window.clearSelectedFile = function() {
 };
 
 // -------------------------------------------------------------------------
-// SUBMIT PRESENSI WITH DYNAMIC LEAVE VALIDATION & FORM LOCK
+// SUBMIT PRESENSI WITH DIRECT SUPABASE SYNC
 // -------------------------------------------------------------------------
 window.submitPresensi = async function() {
-    if (!navigator.onLine) return showToast('⚠️️ Koneksi terputus!', 'error');
+    if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
     if (isCheckingStatus) return showToast('Mohon tunggu validasi...', 'error');
 
     const storeNama = document.getElementById('selectStore').value;
@@ -554,28 +579,14 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        if (currentMode === 'Clock In') {
-            detailCached.hasClockIn = true;
-            detailCached.clockInShift = shiftNama;
-            detailCached.status = 'Clock In';
-        } else if (currentMode === 'Clock Out') {
-            detailCached.hasClockOut = true;
-            detailCached.status = 'Clock Out';
-        } else if (currentMode === 'Pengajuan') {
-            detailCached.hasPengajuan = true;
-            detailCached.pengajuanType = `${jenisPengajuan} (${jumlahHariPengajuan} Hari)`;
-            detailCached.approvalStatus = 'Pending';
-            detailCached.status = finalStatusFormatted;
-        }
-
-        localEmployeeDetailsCache[cacheKey] = detailCached;
+        // Clear cache & re-check status dari server
+        localEmployeeDetailsCache = {};
+        await window.onKaryawanChange(true);
 
         showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
         document.getElementById('textCatatan').value = '';
         window.clearSelectedFile();
         window.resetCamera();
-
-        evaluateUiState(detailCached);
 
         ApiService.submitToAppsScriptBackground({
             supabaseId: createdRecordId,
@@ -602,7 +613,7 @@ window.submitPresensi = async function() {
 };
 
 // -------------------------------------------------------------------------
-// PORTAL HR HANDLERS WITH INSTANT OPTIMISTIC UI RENDER
+// PORTAL HR HANDLERS WITH DIRECT SUPABASE RE-FETCH
 // -------------------------------------------------------------------------
 window.verifyHrPin = async function() {
     const pin = document.getElementById('inputHrPin').value;
@@ -612,7 +623,7 @@ window.verifyHrPin = async function() {
     if (res.status === 'success') {
         document.getElementById('hrAuthCard').classList.add('hidden');
         document.getElementById('hrDashboardContent').classList.remove('hidden');
-        window.loadHrLogs();
+        await window.loadHrLogs();
         showToast('Login HR Berhasil!', 'success');
     } else showToast('🔒 PIN HR Salah!', 'error');
 };
@@ -621,7 +632,7 @@ window.loadHrLogs = async function() {
     const start = document.getElementById('filterStartDate').value;
     const end = document.getElementById('filterEndDate').value;
     const tbody = document.getElementById('tableHrLogsBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500">Memuat Data...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Mengambil Data Supabase...</td></tr>';
 
     hrLogsCache = await ApiService.fetchHrLogs(start, end);
     window.filterHrLogs();
@@ -709,31 +720,22 @@ function renderHrLogsTable(logs) {
     });
 }
 
-// ACTION APPROVAL DENGAN INSTANT MEMORY MUTATION
+// APPROVAL SERTA MEMAKSA RE-FETCH SERVER SUPABASE
 window.approveAction = async function(recordId, karyawanNama, jenisPengajuan, jumlahHari) {
     if (!confirm(`ACC pengajuan / koreksi (${jumlahHari || 1} Hari) untuk ${karyawanNama}?`)) return;
 
-    // 1. UBAH DULU STATE DI MEMORI SECARA LOKAL (INSTAN RENDER)
-    const targetRow = hrLogsCache.find(r => String(r.id) === String(recordId));
-    if (targetRow) {
-        targetRow.status_approval_hr = 'DI ACC';
-        targetRow.is_anomaly = false;
+    // 1. Kirim update ke Supabase secara paralel (Fast Pipeline)
+    const ok = await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan, jumlahHari });
+
+    if (ok) {
+        showToast('🎉 Approval Berhasil & Data Supabase Diperbarui!', 'success');
+        
+        // 2. Clear cache & paksa re-fetch data asli 100% dari Supabase Server
+        localEmployeeDetailsCache = {};
+        await window.loadHrLogs();
+    } else {
+        showToast('❌ Gagal update ke Supabase!', 'error');
     }
-    window.filterHrLogs(); // Langsung re-render UI tabel HR detik ini juga!
-
-    // 2. POTONG SISA CUTI KARYAWAN DI MEMORI LOKAL
-    const empObj = masterKaryawan.find(k => k.nama.trim() === karyawanNama.trim());
-    if (empObj && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
-        empObj.sisaCuti = Math.max(0, empObj.sisaCuti - (jumlahHari || 1));
-    }
-
-    // 3. RESET CACHE STATUS HARIAN SUPAYA TAB SALES MEMBACA STATE DI ACC & CUTI TERBARU
-    localEmployeeDetailsCache = {};
-
-    showToast('🎉 Approval Berhasil & Sisa Cuti Diperbarui!', 'success');
-
-    // 4. KIRIM UPDATE KE SUPABASE DI BACKGROUND
-    await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan, jumlahHari });
 };
 
 window.openRejectModal = function(recordId, karyawanNama) {
@@ -754,18 +756,15 @@ window.confirmRejectAction = async function() {
     const target = selectedRowForReject;
     window.closeRejectModal();
 
-    // 1. UBAH STATE DI MEMORI LOKAL (INSTAN RENDER)
-    const targetRow = hrLogsCache.find(r => String(r.id) === String(target.id));
-    if (targetRow) {
-        targetRow.status_approval_hr = 'DI REJECT';
+    const ok = await ApiService.updateApproval({ rowId: target.id, karyawanNama: target.nama, approvalStatus: 'Rejected', alasanReject: reason });
+
+    if (ok) {
+        showToast('Penolakan Berhasil!', 'success');
+        
+        // Clear cache & paksa re-fetch data asli 100% dari Supabase Server
+        localEmployeeDetailsCache = {};
+        await window.loadHrLogs();
+    } else {
+        showToast('❌ Gagal update ke Supabase!', 'error');
     }
-    window.filterHrLogs(); // Langsung re-render UI tabel HR!
-
-    // 2. RESET CACHE HARIAN
-    localEmployeeDetailsCache = {};
-
-    showToast('Penolakan Berhasil!', 'success');
-
-    // 3. KIRIM UPDATE KE SUPABASE DI BACKGROUND
-    await ApiService.updateApproval({ rowId: target.id, karyawanNama: target.nama, approvalStatus: 'Rejected', alasanReject: reason });
 };

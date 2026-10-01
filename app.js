@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - STRICT SINGLE-SUBMISSION SAFEGUARD
-// Orchestrates UI Event Handlers, Dynamic Attachments & Immediate State Lock
+// APP CONTROLLER (app.js) - COMPLETE STATE MACHINE & CAMERA LOCK
+// Handles Shift Locking, Anti-Double Clock In/Out, & Camera UI Locking
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -47,8 +47,8 @@ let isCheckingStatus = false;
 let hrLogsCache = [];
 let selectedEmployeeSisaCuti = 12;
 
-// CACHE IN-MEMORY STATUS PRESENSI HARIAN
-let localEmployeeStatusCache = {};
+// CACHE STATE LOKAL HARIAN (hasClockIn, hasClockOut, clockInShift)
+let localEmployeeDetailsCache = {};
 
 async function initApp() {
     const today = getWibDateString();
@@ -132,7 +132,7 @@ window.onStoreChange = function() {
 
 window.onKaryawanChange = async function() {
     const karyawanNama = document.getElementById('selectKaryawan').value;
-    const store = document.getElementById('selectStore').value;
+    const storeNama = document.getElementById('selectStore').value;
     const badge = document.getElementById('badgeLiveStatus');
     const badgeCuti = document.getElementById('badgeSisaCuti');
 
@@ -140,6 +140,7 @@ window.onKaryawanChange = async function() {
         badge.textContent = 'Belum Dipilih';
         badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
         if (badgeCuti) badgeCuti.classList.add('hidden');
+        evaluateUiState({ status: 'Belum Dipilih', hasClockIn: false, hasClockOut: false, clockInShift: null });
         return;
     }
 
@@ -152,35 +153,100 @@ window.onKaryawanChange = async function() {
         badgeCuti.classList.remove('hidden');
     }
 
-    // CEK IN-MEMORY CACHE DAHULU SBLM QUERY API
-    const cacheKey = `${karyawanNama.trim()}_${store.trim()}`;
-    if (localEmployeeStatusCache[cacheKey]) {
-        updateBadgeStatus(localEmployeeStatusCache[cacheKey]);
+    const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
+    if (localEmployeeDetailsCache[cacheKey]) {
+        evaluateUiState(localEmployeeDetailsCache[cacheKey]);
         return;
     }
 
     isCheckingStatus = true;
     badge.textContent = 'Mengecek...';
-    const st = await ApiService.checkTodayStatus(karyawanNama, store);
+    const detail = await ApiService.checkTodayStatusDetail(karyawanNama, storeNama);
     isCheckingStatus = false;
 
-    if (st !== 'ERROR_CHECKING') {
-        localEmployeeStatusCache[cacheKey] = st;
-        updateBadgeStatus(st);
+    if (detail.status !== 'ERROR_CHECKING') {
+        localEmployeeDetailsCache[cacheKey] = detail;
+        evaluateUiState(detail);
     } else {
         badge.textContent = 'Gagal Cek Status';
         badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700';
     }
 };
 
-function updateBadgeStatus(st) {
+// EVALUASI & KUNCI ELEMEN UI BERDASARKAN STATUS SALES
+function evaluateUiState(detail) {
     const badge = document.getElementById('badgeLiveStatus');
-    badge.textContent = st === 'OFFLINE_UNKNOWN' ? 'Offline' : st;
+    const selectShift = document.getElementById('selectShift');
+    const st = detail.status;
 
+    // 1. Update Text Badge
+    badge.textContent = st === 'OFFLINE_UNKNOWN' ? 'Offline' : st;
     if (st === 'Clock In' || st.includes('Clock In')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700';
     else if (st === 'Clock Out' || st.includes('Clock Out')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700';
     else if (st.includes('Pengajuan')) badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700';
     else badge.className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600';
+
+    // 2. Kunci Dropdown Shift jika Pindah ke Clock Out & Sudah Clock In Awal
+    if (currentMode === 'Clock Out' && detail.hasClockIn && detail.clockInShift) {
+        if (selectShift) {
+            selectShift.value = detail.clockInShift;
+            selectShift.disabled = true; // LOCK SHIFT DROPDOWN!
+            selectShift.classList.add('bg-gray-200', 'cursor-not-allowed');
+        }
+    } else {
+        if (selectShift) {
+            selectShift.disabled = false; // UNLOCK
+            selectShift.classList.remove('bg-gray-200', 'cursor-not-allowed');
+        }
+    }
+
+    // 3. KUNCI KAMERA JIKA SUDAH CLOCK IN & TETAP DI MODE CLOCK IN
+    const cameraHeaderRow = document.getElementById('cameraHeaderRow');
+    const containerCam = document.getElementById('containerCamera');
+    const btnSubmit = document.getElementById('btnSubmitPresensi');
+    const cameraLockNotice = document.getElementById('cameraLockNotice');
+
+    if (currentMode === 'Clock In' && detail.hasClockIn) {
+        // Matikan kamera & sembunyikan kontrol kamera saat di mode Clock In padahal sudah Clock In
+        CameraService.stopWebcam('webcam', 'btnToggleCamera');
+        if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
+        if (containerCam) containerCam.classList.add('hidden');
+        if (cameraLockNotice) {
+            cameraLockNotice.innerHTML = `
+                <div class="p-4 bg-green-50 border border-green-200 rounded-2xl text-center space-y-1">
+                    <div class="text-xs font-bold text-green-800"><i class="fa-solid fa-circle-check mr-1.5"></i> Anda Sudah Clock In Hari Ini</div>
+                    <div class="text-[11px] text-green-600">Pilihan shift terunci: <strong>${detail.clockInShift || '-'}</strong>. Silakan klik tombol <strong>Clock Out</strong> di atas saat jam pulang sekolah/toko.</div>
+                </div>
+            `;
+            cameraLockNotice.classList.remove('hidden');
+        }
+        if (btnSubmit) btnSubmit.disabled = true;
+    } else if (currentMode === 'Clock Out' && detail.hasClockOut) {
+        // Matikan kamera jika sudah Clock Out lengkap hari ini
+        CameraService.stopWebcam('webcam', 'btnToggleCamera');
+        if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
+        if (containerCam) containerCam.classList.add('hidden');
+        if (cameraLockNotice) {
+            cameraLockNotice.innerHTML = `
+                <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-center space-y-1">
+                    <div class="text-xs font-bold text-blue-800"><i class="fa-solid fa-circle-check mr-1.5"></i> Presensi Hari Ini Telah Lengkap</div>
+                    <div class="text-[11px] text-blue-600">Anda sudah melakukan Clock In & Clock Out hari ini. Terima kasih!</div>
+                </div>
+            `;
+            cameraLockNotice.classList.remove('hidden');
+        }
+        if (btnSubmit) btnSubmit.disabled = true;
+    } else {
+        // Buka kembali kamera untuk Mode Clock Out (yang belum Clock Out) atau Mode Pengajuan
+        if (cameraLockNotice) cameraLockNotice.classList.add('hidden');
+        if (btnSubmit) btnSubmit.disabled = false;
+        
+        if (currentMode === 'Clock In' || currentMode === 'Clock Out') {
+            window.setAttachType('camera');
+        } else {
+            window.setAttachType('file');
+        }
+    }
 }
 
 window.setAbsenMode = function(mode) {
@@ -201,15 +267,21 @@ window.setAbsenMode = function(mode) {
         secShift.classList.remove('hidden');
         secPeng.classList.add('hidden');
         attachToggle.classList.add('hidden');
-        window.setAttachType('camera');
     } else {
         btnPeng.className = "py-2.5 px-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 font-semibold text-xs flex flex-col items-center justify-center space-y-1 shadow-sm";
         secShift.classList.add('hidden');
         secPeng.classList.remove('hidden');
         attachToggle.classList.add('hidden');
         if (document.getElementById('selectShift')) document.getElementById('selectShift').value = '-';
-        window.setAttachType('file');
     }
+
+    // Re-evaluate UI state saat tombol mode diklik
+    const karyawanNama = document.getElementById('selectKaryawan').value;
+    const storeNama = document.getElementById('selectStore').value;
+    const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
+    const detail = localEmployeeDetailsCache[cacheKey] || { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
+    
+    evaluateUiState(detail);
 };
 
 window.setAttachType = function(type) {
@@ -301,7 +373,7 @@ window.clearSelectedFile = function() {
 };
 
 // -------------------------------------------------------------------------
-// SUBMIT PRESENSI WITH STRICT DOUBLE-SUBMIT PREVENTION
+// SUBMIT PRESENSI WITH STRICT DOUBLE CLOCK IN & DOUBLE CLOCK OUT LOCK
 // -------------------------------------------------------------------------
 window.submitPresensi = async function() {
     if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
@@ -309,7 +381,8 @@ window.submitPresensi = async function() {
 
     const storeNama = document.getElementById('selectStore').value;
     const karyawanNama = document.getElementById('selectKaryawan').value;
-    const shiftNama = document.getElementById('selectShift') ? document.getElementById('selectShift').value : '-';
+    const selectShift = document.getElementById('selectShift');
+    const shiftNama = selectShift ? selectShift.value : '-';
     const jenisPengajuan = document.getElementById('selectJenisPengajuan') ? document.getElementById('selectJenisPengajuan').value : '-';
     const catatan = document.getElementById('textCatatan').value;
     const btnSubmit = document.getElementById('btnSubmitPresensi');
@@ -320,12 +393,18 @@ window.submitPresensi = async function() {
         return;
     }
 
-    // CEK IN-MEMORY CACHE UNTUK DOUBLE CLOCK IN DISINI!
     const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
-    const lastStatusCached = localEmployeeStatusCache[cacheKey] || 'Belum Absen';
+    const detailCached = localEmployeeDetailsCache[cacheKey] || { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, clockInShift: null };
 
-    if (currentMode === 'Clock In' && (lastStatusCached === 'Clock In' || lastStatusCached.includes('Clock In'))) {
+    // 1. BLOKIR DOUBLE CLOCK IN
+    if (currentMode === 'Clock In' && detailCached.hasClockIn) {
         showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock In hari ini!`, 'error');
+        return;
+    }
+
+    // 2. BLOKIR DOUBLE CLOCK OUT
+    if (currentMode === 'Clock Out' && detailCached.hasClockOut) {
+        showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock Out hari ini!`, 'error');
         return;
     }
 
@@ -358,7 +437,7 @@ window.submitPresensi = async function() {
         let finalStatusFormatted = (currentMode === 'Pengajuan') ? `Pengajuan ${jenisPengajuan}` : currentMode;
         let approvalDefault = finalStatusFormatted.includes("Pengajuan") ? "Pending" : "Auto-Approved";
 
-        if (currentMode === 'Clock Out' && lastStatusCached === 'Belum Absen') {
+        if (currentMode === 'Clock Out' && !detailCached.hasClockIn) {
             isAnomaly = true;
             finalStatusFormatted = 'Clock Out (Tanpa Clock In)';
             approvalDefault = 'Anomali - Butuh Koreksi';
@@ -385,14 +464,27 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        // KUNCI DAN UPDATE CACHE STATISTIK PERSISTEN LOKAL SECARA INSTAN!
-        localEmployeeStatusCache[cacheKey] = finalStatusFormatted;
-        updateBadgeStatus(finalStatusFormatted);
+        // UPDATE CACHE PERSISTEN SECARA INSTAN
+        if (currentMode === 'Clock In') {
+            detailCached.hasClockIn = true;
+            detailCached.clockInShift = shiftNama;
+            detailCached.status = 'Clock In';
+        } else if (currentMode === 'Clock Out') {
+            detailCached.hasClockOut = true;
+            detailCached.status = 'Clock Out';
+        } else {
+            detailCached.status = finalStatusFormatted;
+        }
 
-        showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
+        localEmployeeDetailsCache[cacheKey] = detailCached;
+
+        showToast('🎉 Presensi Berhasil Tersimpan!', 'success');
         document.getElementById('textCatatan').value = '';
         window.clearSelectedFile();
         window.resetCamera();
+
+        // Kunci UI otomatis setelah submit berhasil
+        evaluateUiState(detailCached);
 
         ApiService.submitToAppsScriptBackground({
             supabaseId: createdRecordId,

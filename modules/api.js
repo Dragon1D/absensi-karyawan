@@ -1,6 +1,6 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - STRICT STATUS BINDING & RECALC
-// Production-Grade Architecture for Demo & Live Operational Stability
+// MODULE: API SERVICE (modules/api.js) - STRICT DATABASE SYNC
+// Dynamic Leave Engine with Multi-Source Persistence Verification
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -46,13 +46,12 @@ export const ApiService = {
         return { startIso, endIso };
     },
 
-    // SINKRONISASI & REKALKULASI CUTI DINAMIS DARI DATABASE SUPABASE
+    // KALKULASI DINAMIS SISA CUTI BERDASARKAN LOG SUPABASE
     async syncSisaCuti(karyawanNama) {
         if (!karyawanNama) return 12;
         try {
             const cleanEmp = karyawanNama.trim();
             
-            // Ambil hanya log absensi karyawan terkait yang berstatus DI ACC / Approved
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&select=status_absen,jenis_pengajuan,status_approval_hr`;
             const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
             
@@ -64,7 +63,6 @@ export const ApiService = {
                     const isApproved = (statusApp === 'DI ACC' || statusApp === 'Auto-Approved' || statusApp === 'Approved');
                     const jenis = log.jenis_pengajuan || log.status_absen || '';
                     
-                    // Hanya hitung jika status BENAR-BENAR DI ACC
                     if (isApproved && jenis.includes('Cuti')) {
                         const match = jenis.match(/\((\d+)\s*Hari\)/);
                         const days = match ? parseInt(match[1]) : 1;
@@ -75,7 +73,7 @@ export const ApiService = {
 
             const sisaCutiTerhitung = Math.max(0, 12 - totalCutiTerpakai);
 
-            // Update hasil hitung ke tabel karyawan
+            // Update nilai sisa cuti ke tabel karyawan di Supabase
             const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, { headers: HEADERS, cache: 'no-store' });
             if (resEmp.ok) {
                 const empData = await resEmp.json();
@@ -136,7 +134,6 @@ export const ApiService = {
             if (!res.ok) throw new Error("Gagal mengambil status presensi");
             const data = await res.json();
 
-            // Selalu dapatkan angka sisa cuti paling presisi langsung dari DB
             const sisaCutiFresh = await this.syncSisaCuti(cleanEmp);
 
             if (!data || data.length === 0) {
@@ -209,14 +206,12 @@ export const ApiService = {
         }
     },
 
-    // EKSEKUSI UPDATE APPROVAL DENGAN VERIFIKASI STRICT STRINGS
     async updateApproval({ rowId, karyawanNama, targetStatus, alasanReject }) {
         try {
             const numericId = Number(rowId);
             const queryId = !isNaN(numericId) ? numericId : rowId;
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${queryId}`;
 
-            // Konsistensi String Mutlak: 'DI ACC' atau 'DI REJECT'
             const validStatus = (targetStatus === 'DI ACC' || targetStatus === 'Approved') ? 'DI ACC' : 'DI REJECT';
 
             const resLog = await fetch(url, {
@@ -236,14 +231,14 @@ export const ApiService = {
 
             const updatedRows = await resLog.json();
             if (!updatedRows || updatedRows.length === 0) {
-                console.error("0 Rows updated in log_absensi! Cek ID atau RLS Policy.");
+                console.error("0 Rows updated in log_absensi! Cek RLS Policy di Supabase Console.");
                 return false;
             }
 
-            // Hitung ulang dan sinkronkan sisa cuti berdasarkan data DB terbaru
+            // Sync sisa cuti setelah approval berhasil
             await this.syncSisaCuti(karyawanNama);
 
-            // Log ke Google Sheets (Read-Only Async Background)
+            // Log update ke Apps Script
             this.submitToAppsScriptBackground({
                 action: 'update_approval',
                 rowId: rowId,

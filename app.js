@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - OPTIMISTIC UI & INSTANT STATE MUTATION
-// Orchestrates UI Event Handlers, Dynamic Attachments & Immediate State Lock
+// APP CONTROLLER (app.js) - SAFE EVENT BINDING & REAL-TIME SYNC
+// Dynamic UI Updates, Safe ID Lookups, and Automatic Leave Recalculation
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -75,7 +75,7 @@ window.addEventListener('beforeunload', () => {
     CameraService.stopWebcam('webcam', 'btnToggleCamera');
 });
 
-window.switchTab = function(tab) {
+window.switchTab = async function(tab) {
     const salesSec = document.getElementById('tabSalesSection');
     const hrSec = document.getElementById('tabHrSection');
     const salesBtn = document.getElementById('tabSalesBtn');
@@ -86,13 +86,18 @@ window.switchTab = function(tab) {
         hrSec.classList.add('hidden');
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
-        window.onKaryawanChange();
+        
+        localEmployeeDetailsCache = {};
+        const freshData = await ApiService.fetchMasterData();
+        masterKaryawan = freshData.karyawan || [];
+        await window.onKaryawanChange();
     } else {
         salesSec.classList.add('hidden');
         hrSec.classList.remove('hidden');
         hrBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-indigo-600 shadow-sm";
         salesBtn.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-900";
         CameraService.stopWebcam('webcam', 'btnToggleCamera');
+        await window.loadHrLogs();
     }
 };
 
@@ -144,8 +149,13 @@ window.onKaryawanChange = async function() {
         return;
     }
 
-    const empObj = masterKaryawan.find(k => k.nama.trim() === karyawanNama.trim());
-    selectedEmployeeSisaCuti = empObj?.sisaCuti ?? 12;
+    isCheckingStatus = true;
+    badge.textContent = 'Mengecek...';
+    const detail = await ApiService.checkTodayStatusDetail(karyawanNama, storeNama);
+    isCheckingStatus = false;
+
+    // Update sisa cuti hasil sinkronisasi dinamis dari DB
+    selectedEmployeeSisaCuti = detail.sisaCuti !== undefined ? detail.sisaCuti : 12;
 
     if (badgeCuti) {
         badgeCuti.textContent = `🌴 Sisa Cuti: ${selectedEmployeeSisaCuti} Hari`;
@@ -155,18 +165,8 @@ window.onKaryawanChange = async function() {
 
     window.calculateLeavePreview();
 
-    const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
-    if (localEmployeeDetailsCache[cacheKey]) {
-        evaluateUiState(localEmployeeDetailsCache[cacheKey]);
-        return;
-    }
-
-    isCheckingStatus = true;
-    badge.textContent = 'Mengecek...';
-    const detail = await ApiService.checkTodayStatusDetail(karyawanNama, storeNama);
-    isCheckingStatus = false;
-
     if (detail.status !== 'ERROR_CHECKING') {
+        const cacheKey = `${karyawanNama.trim()}_${storeNama.trim()}`;
         localEmployeeDetailsCache[cacheKey] = detail;
         evaluateUiState(detail);
     } else {
@@ -271,7 +271,6 @@ function evaluateUiState(detail) {
         if (cameraHeaderRow) cameraHeaderRow.classList.add('hidden');
         if (containerCam) containerCam.classList.add('hidden');
 
-        // BANNER STATUS DISESUAIKAN DENGAN EVALUASI HR
         const appStatus = detail.approvalStatus || 'Pending';
         let bannerBg = 'bg-amber-50 border-amber-200 text-amber-800';
         let statusBadge = `<span class="font-bold text-amber-700">Pending</span>`;
@@ -571,28 +570,13 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        if (currentMode === 'Clock In') {
-            detailCached.hasClockIn = true;
-            detailCached.clockInShift = shiftNama;
-            detailCached.status = 'Clock In';
-        } else if (currentMode === 'Clock Out') {
-            detailCached.hasClockOut = true;
-            detailCached.status = 'Clock Out';
-        } else if (currentMode === 'Pengajuan') {
-            detailCached.hasPengajuan = true;
-            detailCached.pengajuanType = `${jenisPengajuan} (${jumlahHariPengajuan} Hari)`;
-            detailCached.approvalStatus = 'Pending';
-            detailCached.status = finalStatusFormatted;
-        }
-
-        localEmployeeDetailsCache[cacheKey] = detailCached;
+        // Refresh status & recalculate sisa cuti dari server
+        await window.onKaryawanChange();
 
         showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
         document.getElementById('textCatatan').value = '';
         window.clearSelectedFile();
         window.resetCamera();
-
-        evaluateUiState(detailCached);
 
         ApiService.submitToAppsScriptBackground({
             supabaseId: createdRecordId,
@@ -618,7 +602,7 @@ window.submitPresensi = async function() {
     }
 };
 
-// PORTAL HR HANDLERS WITH INSTANT OPTIMISTIC UI RENDER
+// PORTAL HR HANDLERS
 window.verifyHrPin = async function() {
     const pin = document.getElementById('inputHrPin').value;
     if (!pin) return showToast('Masukkan PIN HR Admin!', 'error');
@@ -689,16 +673,10 @@ function renderHrLogsTable(logs) {
             fileBtnHtml = `<span class="text-amber-600 text-[10px] font-semibold animate-pulse">Proses Drive...</span>`;
         }
 
-        let extractedDays = 1;
-        if (row.jenis_pengajuan && row.jenis_pengajuan.includes('Hari')) {
-            const match = row.jenis_pengajuan.match(/\((\d+)\s*Hari\)/);
-            if (match) extractedDays = parseInt(match[1]);
-        }
-
-        // AKSI DENGAN PENYEMBUNYIAN TOMBOL INSTAN
+        // AMAN DARI JS SYNTAX ERROR: Hanya oper ID angka/string murni ke fungsi
         let aksiHtml = `
-            <button onclick="approveAction(${row.id}, '${escapeHtml(row.nama_karyawan)}', '${escapeHtml(row.jenis_pengajuan)}', ${extractedDays})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
-            <button onclick="openRejectModal(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
+            <button onclick="window.handleApproveClick(${row.id})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
+            <button onclick="window.handleRejectClick(${row.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
         `;
 
         if (isApproved) {
@@ -725,39 +703,39 @@ function renderHrLogsTable(logs) {
     });
 }
 
-// APPROVAL DENGAN INSTANT STATE MUTATION UNTUK SEMUA TAB
-window.approveAction = async function(recordId, karyawanNama, jenisPengajuan, jumlahHari) {
-    if (!confirm(`ACC pengajuan / koreksi (${jumlahHari || 1} Hari) untuk ${karyawanNama}?`)) return;
-
-    // 1. INSTANT MUTATION STATE HR TABLE
+// HANDLER ACC AMAN VIA CACHE LOOKUP
+window.handleApproveClick = async function(recordId) {
     const targetRow = hrLogsCache.find(r => String(r.id) === String(recordId));
-    if (targetRow) {
+    if (!targetRow) return showToast('Data tidak ditemukan!', 'error');
+
+    if (!confirm(`ACC pengajuan / koreksi untuk ${targetRow.nama_karyawan}?`)) return;
+
+    showToast('Mengirim update ke Supabase...', 'success');
+
+    const success = await ApiService.updateApproval({ 
+        rowId: recordId, 
+        karyawanNama: targetRow.nama_karyawan, 
+        targetStatus: 'DI ACC', 
+        alasanReject: '-' 
+    });
+
+    if (success) {
         targetRow.status_approval_hr = 'DI ACC';
         targetRow.is_anomaly = false;
+        window.filterHrLogs();
+
+        localEmployeeDetailsCache = {};
+        showToast('🎉 Approval Berhasil & Data Supabase Diperbarui!', 'success');
+    } else {
+        showToast('❌ Gagal update ke Supabase! Cek RLS Policy di Supabase Console.', 'error');
     }
-    window.filterHrLogs(); // Langsung hilangkan tombol ACC/Tolak detik ini juga!
-
-    // 2. INSTANT DEDUCT SISA CUTI LOKAL
-    const empObj = masterKaryawan.find(k => k.nama.trim() === karyawanNama.trim());
-    if (empObj && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
-        empObj.sisaCuti = Math.max(0, empObj.sisaCuti - (jumlahHari || 1));
-    }
-
-    // 3. INSTANT MUTATION STATE UNTUK TAB PRESENSI TOKO
-    for (let key in localEmployeeDetailsCache) {
-        if (key.startsWith(karyawanNama.trim())) {
-            localEmployeeDetailsCache[key].approvalStatus = 'DI ACC';
-        }
-    }
-
-    showToast('🎉 Approval Berhasil & Sisa Cuti Diperbarui!', 'success');
-
-    // 4. ESEKUSI PATCH KE SUPABASE IN BACKGROUND
-    await ApiService.updateApproval({ rowId: recordId, karyawanNama, approvalStatus: 'Approved', alasanReject: '-', jenisPengajuan, jumlahHari });
 };
 
-window.openRejectModal = function(recordId, karyawanNama) {
-    selectedRowForReject = { id: recordId, nama: karyawanNama };
+window.handleRejectClick = function(recordId) {
+    const targetRow = hrLogsCache.find(r => String(r.id) === String(recordId));
+    if (!targetRow) return showToast('Data tidak ditemukan!', 'error');
+
+    selectedRowForReject = targetRow;
     document.getElementById('inputRejectReason').value = '';
     document.getElementById('rejectModal').classList.remove('hidden');
 };
@@ -771,25 +749,25 @@ window.confirmRejectAction = async function() {
     const reason = document.getElementById('inputRejectReason').value;
     if (!reason.trim()) return showToast('Alasan penolakan wajib diisi!', 'error');
 
-    const target = selectedRowForReject;
+    const targetRow = selectedRowForReject;
     window.closeRejectModal();
 
-    // 1. INSTANT MUTATION STATE HR TABLE
-    const targetRow = hrLogsCache.find(r => String(r.id) === String(target.id));
-    if (targetRow) {
+    showToast('Mengirim penolakan ke Supabase...', 'success');
+
+    const success = await ApiService.updateApproval({ 
+        rowId: targetRow.id, 
+        karyawanNama: targetRow.nama_karyawan, 
+        targetStatus: 'DI REJECT', 
+        alasanReject: reason 
+    });
+
+    if (success) {
         targetRow.status_approval_hr = 'DI REJECT';
+        window.filterHrLogs();
+
+        localEmployeeDetailsCache = {};
+        showToast('Penolakan Berhasil Tersimpan!', 'success');
+    } else {
+        showToast('❌ Gagal update ke Supabase! Cek RLS Policy di Supabase Console.', 'error');
     }
-    window.filterHrLogs();
-
-    // 2. INSTANT MUTATION STATE TAB PRESENSI TOKO
-    for (let key in localEmployeeDetailsCache) {
-        if (key.startsWith(target.nama.trim())) {
-            localEmployeeDetailsCache[key].approvalStatus = 'DI REJECT';
-        }
-    }
-
-    showToast('Penolakan Berhasil!', 'success');
-
-    // 3. ESEKUSI PATCH KE SUPABASE IN BACKGROUND
-    await ApiService.updateApproval({ rowId: target.id, karyawanNama: target.nama, approvalStatus: 'Rejected', alasanReject: reason });
 };

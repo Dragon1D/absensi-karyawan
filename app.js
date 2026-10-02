@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - SAFE EVENT BINDING & REAL-TIME SYNC
-// Dynamic UI Updates, Safe ID Lookups, and Automatic Leave Recalculation
+// APP CONTROLLER (app.js) - STRICT EVENT HANDLER & UI LOCK
+// Safe Object Binding, Real-Time State Lock, & Accurate HR Approval Flow
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -154,7 +154,7 @@ window.onKaryawanChange = async function() {
     const detail = await ApiService.checkTodayStatusDetail(karyawanNama, storeNama);
     isCheckingStatus = false;
 
-    // Update sisa cuti hasil sinkronisasi dinamis dari DB
+    // Nilai sisa cuti terhitung otomatis dari database Supabase
     selectedEmployeeSisaCuti = detail.sisaCuti !== undefined ? detail.sisaCuti : 12;
 
     if (badgeCuti) {
@@ -673,7 +673,6 @@ function renderHrLogsTable(logs) {
             fileBtnHtml = `<span class="text-amber-600 text-[10px] font-semibold animate-pulse">Proses Drive...</span>`;
         }
 
-        // AMAN DARI JS SYNTAX ERROR: Hanya oper ID angka/string murni ke fungsi
         let aksiHtml = `
             <button onclick="window.handleApproveClick(${row.id})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
             <button onclick="window.handleRejectClick(${row.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
@@ -703,7 +702,6 @@ function renderHrLogsTable(logs) {
     });
 }
 
-// HANDLER ACC AMAN VIA CACHE LOOKUP
 window.handleApproveClick = async function(recordId) {
     const targetRow = hrLogsCache.find(r => String(r.id) === String(recordId));
     if (!targetRow) return showToast('Data tidak ditemukan!', 'error');

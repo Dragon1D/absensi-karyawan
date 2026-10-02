@@ -1,6 +1,6 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - DYNAMIC LEAVE ENGINE & DB SYNC
-// Production-Grade Architecture with Real-time Recalculation & Strict Binding
+// MODULE: API SERVICE (modules/api.js) - STRICT STATUS BINDING & RECALC
+// Production-Grade Architecture for Demo & Live Operational Stability
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -46,13 +46,13 @@ export const ApiService = {
         return { startIso, endIso };
     },
 
-    // 1. ENGINE KALKULASI CUTI DINAMIS (Menghitung ulang jika data dihapus dari DB/Sheets)
+    // SINKRONISASI & REKALKULASI CUTI DINAMIS DARI DATABASE SUPABASE
     async syncSisaCuti(karyawanNama) {
         if (!karyawanNama) return 12;
         try {
             const cleanEmp = karyawanNama.trim();
             
-            // Ambil seluruh log absensi karyawan tersebut yang berstatus DI ACC / Approved
+            // Ambil hanya log absensi karyawan terkait yang berstatus DI ACC / Approved
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&select=status_absen,jenis_pengajuan,status_approval_hr`;
             const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
             
@@ -64,7 +64,7 @@ export const ApiService = {
                     const isApproved = (statusApp === 'DI ACC' || statusApp === 'Auto-Approved' || statusApp === 'Approved');
                     const jenis = log.jenis_pengajuan || log.status_absen || '';
                     
-                    // Hanya hitung pengajuan Cuti yang SUDAH DI ACC
+                    // Hanya hitung jika status BENAR-BENAR DI ACC
                     if (isApproved && jenis.includes('Cuti')) {
                         const match = jenis.match(/\((\d+)\s*Hari\)/);
                         const days = match ? parseInt(match[1]) : 1;
@@ -75,7 +75,7 @@ export const ApiService = {
 
             const sisaCutiTerhitung = Math.max(0, 12 - totalCutiTerpakai);
 
-            // Update nilai hasil kalkulasi ke tabel karyawan di Supabase
+            // Update hasil hitung ke tabel karyawan
             const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, { headers: HEADERS, cache: 'no-store' });
             if (resEmp.ok) {
                 const empData = await resEmp.json();
@@ -136,7 +136,7 @@ export const ApiService = {
             if (!res.ok) throw new Error("Gagal mengambil status presensi");
             const data = await res.json();
 
-            // Hitung ulang sisa cuti secara presisi dari database
+            // Selalu dapatkan angka sisa cuti paling presisi langsung dari DB
             const sisaCutiFresh = await this.syncSisaCuti(cleanEmp);
 
             if (!data || data.length === 0) {
@@ -209,18 +209,21 @@ export const ApiService = {
         }
     },
 
-    // UPDATE APPROVAL DENGAN HUKUM SINKRONISASI MUTLAK SUPABASE
+    // EKSEKUSI UPDATE APPROVAL DENGAN VERIFIKASI STRICT STRINGS
     async updateApproval({ rowId, karyawanNama, targetStatus, alasanReject }) {
         try {
             const numericId = Number(rowId);
             const queryId = !isNaN(numericId) ? numericId : rowId;
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${queryId}`;
 
+            // Konsistensi String Mutlak: 'DI ACC' atau 'DI REJECT'
+            const validStatus = (targetStatus === 'DI ACC' || targetStatus === 'Approved') ? 'DI ACC' : 'DI REJECT';
+
             const resLog = await fetch(url, {
                 method: 'PATCH',
                 headers: HEADERS,
                 body: JSON.stringify({
-                    status_approval_hr: targetStatus,
+                    status_approval_hr: validStatus,
                     alasan_penolakan_hr: alasanReject || '-',
                     is_anomaly: false
                 })
@@ -240,10 +243,11 @@ export const ApiService = {
             // Hitung ulang dan sinkronkan sisa cuti berdasarkan data DB terbaru
             await this.syncSisaCuti(karyawanNama);
 
+            // Log ke Google Sheets (Read-Only Async Background)
             this.submitToAppsScriptBackground({
                 action: 'update_approval',
                 rowId: rowId,
-                approvalStatus: targetStatus,
+                approvalStatus: validStatus,
                 alasanReject: alasanReject || '-'
             });
 

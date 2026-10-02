@@ -1,5 +1,5 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - PRESENSI & GOOGLE SHEET DISPATCHER
+// APP CONTROLLER (app.js) - PRESENSI, HR PORTAL & SPREADSHEET DISPATCHER
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -471,7 +471,7 @@ window.clearSelectedFile = function() {
     document.getElementById('filePreviewBadge').classList.remove('flex');
 };
 
-// SUBMIT PRESENSI
+// SUBMIT PRESENSI PRESISI
 window.submitPresensi = async function() {
     if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
     if (isCheckingStatus) return showToast('Mohon tunggu validasi...', 'error');
@@ -569,14 +569,7 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        await window.onKaryawanChange();
-
-        showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
-        document.getElementById('textCatatan').value = '';
-        window.clearSelectedFile();
-        window.resetCamera();
-
-        // 2. Dispatch data ke Google Spreadsheet & Google Drive
+        // 2. Dispatch data ke Google Spreadsheet (Menggunakan foto yang terkompresi)
         ApiService.submitToAppsScriptBackground({
             supabaseId: createdRecordId,
             timestamp: isoTimestamp,
@@ -592,6 +585,13 @@ window.submitPresensi = async function() {
             fileMimeType: fileMimeToSend,
             isAnomaly: isAnomaly
         });
+
+        await window.onKaryawanChange();
+
+        showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
+        document.getElementById('textCatatan').value = '';
+        window.clearSelectedFile();
+        window.resetCamera();
 
     } catch (err) {
         showToast('Gagal mengirim: ' + err.message, 'error');
@@ -619,7 +619,7 @@ window.loadHrLogs = async function() {
     const start = document.getElementById('filterStartDate').value;
     const end = document.getElementById('filterEndDate').value;
     const tbody = document.getElementById('tableHrLogsBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500">Memuat Data...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-500">Memuat Data...</td></tr>';
 
     hrLogsCache = await ApiService.fetchHrLogs(start, end);
     window.filterHrLogs();
@@ -641,7 +641,7 @@ window.filterHrLogs = function() {
     }
 
     if (filtered.length > 0) renderHrLogsTable(filtered);
-    else tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-400">Tidak ada data.</td></tr>';
+    else tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-gray-400">Tidak ada data.</td></tr>';
 };
 
 function renderHrLogsTable(logs) {
@@ -675,12 +675,16 @@ function renderHrLogsTable(logs) {
         let aksiHtml = `
             <button onclick="window.handleApproveClick(${row.id})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">ACC</button>
             <button onclick="window.handleRejectClick(${row.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded-lg text-[10px] transition shadow-sm">Tolak</button>
+            <button onclick="window.handleDeleteClick(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-gray-700 hover:bg-black text-white font-bold px-2 py-1 rounded-lg text-[10px] transition shadow-sm ml-1"><i class="fa-solid fa-trash"></i></button>
         `;
 
-        if (isApproved) {
-            aksiHtml = `<span class="inline-flex items-center text-green-600 font-bold text-[11px]"><i class="fa-solid fa-circle-check mr-1"></i> Selesai (ACC)</span>`;
-        } else if (isRejected) {
-            aksiHtml = `<span class="inline-flex items-center text-red-600 font-bold text-[11px]"><i class="fa-solid fa-circle-xmark mr-1"></i> Ditolak</span>`;
+        if (isApproved || isRejected) {
+            aksiHtml = `
+                <span class="inline-flex items-center ${isApproved ? 'text-green-600' : 'text-red-600'} font-bold text-[11px] mr-2">
+                    <i class="fa-solid ${isApproved ? 'fa-circle-check' : 'fa-circle-xmark'} mr-1"></i> ${isApproved ? 'DI ACC' : 'Ditolak'}
+                </span>
+                <button onclick="window.handleDeleteClick(${row.id}, '${escapeHtml(row.nama_karyawan)}')" class="bg-gray-200 hover:bg-red-600 hover:text-white text-gray-700 font-bold px-2 py-0.5 rounded text-[10px] transition"><i class="fa-solid fa-trash"></i></button>
+            `;
         }
 
         tr.innerHTML = `
@@ -766,5 +770,21 @@ window.confirmRejectAction = async function() {
         showToast('Penolakan Berhasil Tersimpan!', 'success');
     } else {
         showToast('❌ Gagal update ke Supabase! Cek RLS Policy di Supabase Console.', 'error');
+    }
+};
+
+window.handleDeleteClick = async function(recordId, karyawanNama) {
+    if (!confirm(`Apakah Anda yakin ingin MENGHAPUS log presensi ini? Data di Supabase & Spreadsheet akan terhapus, dan kuota cuti akan pulih!`)) return;
+
+    showToast('Menghapus data...', 'success');
+    const success = await ApiService.deleteLogRecord(recordId, karyawanNama);
+
+    if (success) {
+        hrLogsCache = hrLogsCache.filter(r => String(r.id) !== String(recordId));
+        window.filterHrLogs();
+        localEmployeeDetailsCache = {};
+        showToast('Data berhasil dihapus dari Supabase & Spreadsheet!', 'success');
+    } else {
+        showToast('Gagal menghapus data.', 'error');
     }
 };

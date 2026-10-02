@@ -1,6 +1,6 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - STRICT DATABASE SYNC
-// Dynamic Leave Engine with Multi-Source Persistence Verification
+// MODULE: API SERVICE (modules/api.js) - STRICT BACKEND & SPREADSHEET BRIDGE
+// Fixed Content-Type for Google Apps Script & Accurate Leave Recalculation
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -46,7 +46,7 @@ export const ApiService = {
         return { startIso, endIso };
     },
 
-    // KALKULASI DINAMIS SISA CUTI BERDASARKAN LOG SUPABASE
+    // REKALKULASI CUTI DINAMIS DARI DATABASE SUPABASE
     async syncSisaCuti(karyawanNama) {
         if (!karyawanNama) return 12;
         try {
@@ -73,7 +73,6 @@ export const ApiService = {
 
             const sisaCutiTerhitung = Math.max(0, 12 - totalCutiTerpakai);
 
-            // Update nilai sisa cuti ke tabel karyawan di Supabase
             const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, { headers: HEADERS, cache: 'no-store' });
             if (resEmp.ok) {
                 const empData = await resEmp.json();
@@ -172,16 +171,18 @@ export const ApiService = {
         return data[0] ? data[0].id : null;
     },
 
+    // PENGIRIMAN DATA KE APPS SCRIPT TANPA TERHAMBAT CORS PREFLIGHT
     async submitToAppsScriptBackground(payload) {
         try {
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'text/plain' }, // Menggunakan text/plain membebaskan dari CORS preflight block
                 body: JSON.stringify(payload)
             });
             return true;
         } catch (err) {
+            console.error("AppsScript Submit Error:", err);
             return false;
         }
     },
@@ -231,14 +232,12 @@ export const ApiService = {
 
             const updatedRows = await resLog.json();
             if (!updatedRows || updatedRows.length === 0) {
-                console.error("0 Rows updated in log_absensi! Cek RLS Policy di Supabase Console.");
+                console.error("0 Rows updated in log_absensi!");
                 return false;
             }
 
-            // Sync sisa cuti setelah approval berhasil
             await this.syncSisaCuti(karyawanNama);
 
-            // Log update ke Apps Script
             this.submitToAppsScriptBackground({
                 action: 'update_approval',
                 rowId: rowId,

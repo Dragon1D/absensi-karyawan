@@ -1,6 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - STRICT BACKEND & SPREADSHEET BRIDGE
-// Fixed Content-Type for Google Apps Script & Accurate Leave Recalculation
+// MODULE: API SERVICE (modules/api.js) - SPREADSHEET BRIDGE & LEAVE ENGINE
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -46,12 +45,10 @@ export const ApiService = {
         return { startIso, endIso };
     },
 
-    // REKALKULASI CUTI DINAMIS DARI DATABASE SUPABASE
     async syncSisaCuti(karyawanNama) {
         if (!karyawanNama) return 12;
         try {
             const cleanEmp = karyawanNama.trim();
-            
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&select=status_absen,jenis_pengajuan,status_approval_hr`;
             const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
             
@@ -171,13 +168,12 @@ export const ApiService = {
         return data[0] ? data[0].id : null;
     },
 
-    // PENGIRIMAN DATA KE APPS SCRIPT TANPA TERHAMBAT CORS PREFLIGHT
     async submitToAppsScriptBackground(payload) {
         try {
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain' }, // Menggunakan text/plain membebaskan dari CORS preflight block
+                headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(payload)
             });
             return true;
@@ -225,16 +221,10 @@ export const ApiService = {
                 })
             });
 
-            if (!resLog.ok) {
-                console.error("Supabase PATCH Error:", await resLog.text());
-                return false;
-            }
+            if (!resLog.ok) return false;
 
             const updatedRows = await resLog.json();
-            if (!updatedRows || updatedRows.length === 0) {
-                console.error("0 Rows updated in log_absensi!");
-                return false;
-            }
+            if (!updatedRows || updatedRows.length === 0) return false;
 
             await this.syncSisaCuti(karyawanNama);
 

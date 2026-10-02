@@ -1,6 +1,6 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - STRICT UPDATE VERIFICATION
-// Centralized REST API Supabase & Google Apps Script Async Pipeline
+// MODULE: API SERVICE (modules/api.js) - DYNAMIC LEAVE ENGINE & DB SYNC
+// Production-Grade Architecture with Real-time Recalculation & Strict Binding
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -11,7 +11,9 @@ const SCRIPT_URL = CONFIG.SCRIPT_URL;
 
 const HEADERS = {
     'apikey': SUPABASE_KEY,
-    'Authorization': `Bearer ${SUPABASE_KEY}`
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
 };
 
 const HARDCODED_STORES = [
@@ -24,7 +26,7 @@ const HARDCODED_STORES = [
 
 const HARDCODED_KARYAWAN = [
     { id: 'EMP-101', storeId: 'STORE-01', nama: 'Budi Santoso', jabatan: 'Senior Sales', sisaCuti: 12 },
-    { id: 'EMP-102', storeId: 'STORE-01', nama: 'Siti Nurhaliza', jabatan: 'Sales Executive', sisaCuti: 10 },
+    { id: 'EMP-102', storeId: 'STORE-01', nama: 'Siti Nurhaliza', jabatan: 'Sales Executive', sisaCuti: 12 },
     { id: 'EMP-201', storeId: 'STORE-02', nama: 'Dian Sastro', jabatan: 'Senior Sales', sisaCuti: 12 },
     { id: 'EMP-301', storeId: 'STORE-03', nama: 'Lukman Hakim', jabatan: 'Leader Store', sisaCuti: 12 },
     { id: 'EMP-501', storeId: 'STORE-05', nama: 'Fiersa Besari', jabatan: 'Sales Executive', sisaCuti: 12 }
@@ -42,6 +44,55 @@ export const ApiService = {
         const endIso = new Date(Date.UTC(yyyy, wibDate.getUTCMonth(), dd, 23 - 7, 59, 59)).toISOString();
         
         return { startIso, endIso };
+    },
+
+    // 1. ENGINE KALKULASI CUTI DINAMIS (Menghitung ulang jika data dihapus dari DB/Sheets)
+    async syncSisaCuti(karyawanNama) {
+        if (!karyawanNama) return 12;
+        try {
+            const cleanEmp = karyawanNama.trim();
+            
+            // Ambil seluruh log absensi karyawan tersebut yang berstatus DI ACC / Approved
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&select=status_absen,jenis_pengajuan,status_approval_hr`;
+            const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
+            
+            let totalCutiTerpakai = 0;
+            if (res.ok) {
+                const logs = await res.json();
+                logs.forEach(log => {
+                    const statusApp = log.status_approval_hr || '';
+                    const isApproved = (statusApp === 'DI ACC' || statusApp === 'Auto-Approved' || statusApp === 'Approved');
+                    const jenis = log.jenis_pengajuan || log.status_absen || '';
+                    
+                    // Hanya hitung pengajuan Cuti yang SUDAH DI ACC
+                    if (isApproved && jenis.includes('Cuti')) {
+                        const match = jenis.match(/\((\d+)\s*Hari\)/);
+                        const days = match ? parseInt(match[1]) : 1;
+                        totalCutiTerpakai += days;
+                    }
+                });
+            }
+
+            const sisaCutiTerhitung = Math.max(0, 12 - totalCutiTerpakai);
+
+            // Update nilai hasil kalkulasi ke tabel karyawan di Supabase
+            const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, { headers: HEADERS, cache: 'no-store' });
+            if (resEmp.ok) {
+                const empData = await resEmp.json();
+                if (empData && empData.length > 0) {
+                    await fetch(`${SUPABASE_URL}/rest/v1/karyawan?id=eq.${encodeURIComponent(empData[0].id)}`, {
+                        method: 'PATCH',
+                        headers: HEADERS,
+                        body: JSON.stringify({ sisa_cuti: sisaCutiTerhitung })
+                    });
+                }
+            }
+
+            return sisaCutiTerhitung;
+        } catch (err) {
+            console.error("Error syncSisaCuti:", err);
+            return 12;
+        }
     },
 
     async fetchMasterData() {
@@ -85,8 +136,11 @@ export const ApiService = {
             if (!res.ok) throw new Error("Gagal mengambil status presensi");
             const data = await res.json();
 
+            // Hitung ulang sisa cuti secara presisi dari database
+            const sisaCutiFresh = await this.syncSisaCuti(cleanEmp);
+
             if (!data || data.length === 0) {
-                return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
+                return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null, sisaCuti: sisaCutiFresh };
             }
 
             const clockInRec = data.find(r => r.status_absen === 'Clock In' || r.status_absen.includes('Clock In'));
@@ -101,7 +155,8 @@ export const ApiService = {
                 hasPengajuan: !!pengajuanRec,
                 clockInShift: clockInRec ? clockInRec.jam_shift : null,
                 pengajuanType: pengajuanRec ? pengajuanRec.jenis_pengajuan : null,
-                approvalStatus: pengajuanRec ? pengajuanRec.status_approval_hr : lastRec.status_approval_hr
+                approvalStatus: pengajuanRec ? pengajuanRec.status_approval_hr : lastRec.status_approval_hr,
+                sisaCuti: sisaCutiFresh
             };
         } catch (err) {
             return { status: 'ERROR_CHECKING', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
@@ -111,45 +166,13 @@ export const ApiService = {
     async submitToSupabase(payload) {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/log_absensi`, {
             method: 'POST',
-            headers: {
-                ...HEADERS,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            },
+            headers: HEADERS,
             body: JSON.stringify(payload)
         });
 
         if (!res.ok) throw new Error(`Supabase Insert Failed: ${res.statusText}`);
         const data = await res.json();
         return data[0] ? data[0].id : null;
-    },
-
-    async deductLeaveBalance(karyawanNama, jumlahHari = 1) {
-        try {
-            const cleanEmp = karyawanNama.trim();
-            const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, {
-                headers: HEADERS,
-                cache: 'no-store'
-            });
-            if (!resEmp.ok) return;
-            const empData = await resEmp.json();
-            if (!empData || empData.length === 0) return;
-
-            const currentBalance = empData[0].sisa_cuti ?? 12;
-            const newBalance = Math.max(0, currentBalance - parseInt(jumlahHari));
-
-            await fetch(`${SUPABASE_URL}/rest/v1/karyawan?id=eq.${empData[0].id}`, {
-                method: 'PATCH',
-                headers: {
-                    ...HEADERS,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
-                },
-                body: JSON.stringify({ sisa_cuti: newBalance })
-            });
-        } catch (err) {
-            console.error("Deduct leave balance error:", err);
-        }
     },
 
     async submitToAppsScriptBackground(payload) {
@@ -186,19 +209,16 @@ export const ApiService = {
         }
     },
 
-    // UPDATE APPROVAL DENGAN VERIFIKASI ARRAY DARI SUPABASE
-    async updateApproval({ rowId, karyawanNama, approvalStatus, alasanReject, jenisPengajuan, jumlahHari }) {
+    // UPDATE APPROVAL DENGAN HUKUM SINKRONISASI MUTLAK SUPABASE
+    async updateApproval({ rowId, karyawanNama, targetStatus, alasanReject }) {
         try {
-            const targetStatus = approvalStatus === 'Approved' ? 'DI ACC' : 'DI REJECT';
-            const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${rowId}`;
+            const numericId = Number(rowId);
+            const queryId = !isNaN(numericId) ? numericId : rowId;
+            const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${queryId}`;
 
             const resLog = await fetch(url, {
                 method: 'PATCH',
-                headers: {
-                    ...HEADERS,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
-                },
+                headers: HEADERS,
                 body: JSON.stringify({
                     status_approval_hr: targetStatus,
                     alasan_penolakan_hr: alasanReject || '-',
@@ -206,17 +226,19 @@ export const ApiService = {
                 })
             });
 
-            if (!resLog.ok) return false;
+            if (!resLog.ok) {
+                console.error("Supabase PATCH Error:", await resLog.text());
+                return false;
+            }
+
             const updatedRows = await resLog.json();
-
-            // Verifikasi apakah Supabase benar-benar mengubah data (panjang array > 0)
             if (!updatedRows || updatedRows.length === 0) {
-                console.warn("Supabase PATCH 0 row modified for ID:", rowId);
+                console.error("0 Rows updated in log_absensi! Cek ID atau RLS Policy.");
+                return false;
             }
 
-            if (approvalStatus === 'Approved' && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
-                await this.deductLeaveBalance(karyawanNama, jumlahHari || 1);
-            }
+            // Hitung ulang dan sinkronkan sisa cuti berdasarkan data DB terbaru
+            await this.syncSisaCuti(karyawanNama);
 
             this.submitToAppsScriptBackground({
                 action: 'update_approval',

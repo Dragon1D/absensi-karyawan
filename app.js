@@ -1,5 +1,5 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - COMPLETE PRESENSI & SPREADSHEET DISPATCHER
+// APP CONTROLLER (app.js) - PRESENSI & GOOGLE SHEET DISPATCHER
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -471,7 +471,7 @@ window.clearSelectedFile = function() {
     document.getElementById('filePreviewBadge').classList.remove('flex');
 };
 
-// EKSEKUSI SUBMIT PRESENSI PRESISI
+// SUBMIT PRESENSI
 window.submitPresensi = async function() {
     if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
     if (isCheckingStatus) return showToast('Mohon tunggu validasi...', 'error');

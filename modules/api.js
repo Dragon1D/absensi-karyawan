@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - SPREADSHEET BRIDGE & LEAVE ENGINE
+// MODULE: API SERVICE (modules/api.js) - LIGHTWEIGHT PAYLOAD & DYNAMIC LEAVE
 // =========================================================================
 
 import { CONFIG } from '../config.js';
@@ -45,6 +45,33 @@ export const ApiService = {
         return { startIso, endIso };
     },
 
+    // KOMPRESOR GAMBAR BASE64 AGAR PAYLOAD APPS SCRIPT SANGAT RINGAN (< 80 KB)
+    async compressBase64(base64Str, maxWidth = 400, quality = 0.6) {
+        if (!base64Str || !base64Str.startsWith('data:image')) return base64Str;
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = () => resolve(base64Str);
+        });
+    },
+
+    // HITUNG DINAMIS SISA CUTI BERDASARKAN EKSISTENSI DATA DI SUPABASE
     async syncSisaCuti(karyawanNama) {
         if (!karyawanNama) return 12;
         try {
@@ -68,6 +95,7 @@ export const ApiService = {
                 });
             }
 
+            // Jika data di-delete dari Supabase, otomatis sisa cuti bertambah kembali!
             const sisaCutiTerhitung = Math.max(0, 12 - totalCutiTerpakai);
 
             const resEmp = await fetch(`${SUPABASE_URL}/rest/v1/karyawan?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}`, { headers: HEADERS, cache: 'no-store' });
@@ -170,6 +198,11 @@ export const ApiService = {
 
     async submitToAppsScriptBackground(payload) {
         try {
+            // Kompres foto selfie webcam jika ada
+            if (payload.fileBase64 && payload.fileBase64.startsWith('data:image')) {
+                payload.fileBase64 = await this.compressBase64(payload.fileBase64, 400, 0.6);
+            }
+
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
@@ -230,7 +263,7 @@ export const ApiService = {
 
             this.submitToAppsScriptBackground({
                 action: 'update_approval',
-                rowId: rowId,
+                supabaseId: rowId,
                 approvalStatus: validStatus,
                 alasanReject: alasanReject || '-'
             });
@@ -238,6 +271,35 @@ export const ApiService = {
             return true;
         } catch (err) {
             console.error("Update approval error:", err);
+            return false;
+        }
+    },
+
+    // HAPUS DATA DARI SUPABASE DAN KANAN KIRI TERIKAT KE SPREADSHEET
+    async deleteLogRecord(recordId, karyawanNama) {
+        try {
+            const numericId = Number(recordId);
+            const queryId = !isNaN(numericId) ? numericId : recordId;
+
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${queryId}`, {
+                method: 'DELETE',
+                headers: HEADERS
+            });
+
+            if (res.ok) {
+                // Sync ulang sisa cuti jika data yang dihapus adalah cuti
+                if (karyawanNama) await this.syncSisaCuti(karyawanNama);
+
+                // Hapus juga di Google Spreadsheet
+                this.submitToAppsScriptBackground({
+                    action: 'delete_record',
+                    supabaseId: recordId
+                });
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.error("Delete record error:", err);
             return false;
         }
     }

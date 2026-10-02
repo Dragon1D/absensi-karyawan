@@ -1,5 +1,5 @@
 // =========================================================================
-// MODULE: API SERVICE (modules/api.js) - FIXED POSTGREST QUERY & NO-STORE
+// MODULE: API SERVICE (modules/api.js) - STRICT UPDATE VERIFICATION
 // Centralized REST API Supabase & Google Apps Script Async Pipeline
 // =========================================================================
 
@@ -65,7 +65,6 @@ export const ApiService = {
         }
     },
 
-    // Pengecekan Status Presensi Supabase Tanpa Query Param Non-Kolom
     async checkTodayStatusDetail(karyawanNama, storeNama) {
         if (!karyawanNama || !storeNama) {
             return { status: 'Belum Absen', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
@@ -79,16 +78,11 @@ export const ApiService = {
             const cleanStore = storeNama.trim();
             const { startIso, endIso } = this.getWibDayBounds();
 
-            // SINTAKS RESMI POSTGREST SUPABASE (Tanpa _t= parameter)
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?nama_karyawan=eq.${encodeURIComponent(cleanEmp)}&nama_store=eq.${encodeURIComponent(cleanStore)}&timestamp=gte.${encodeURIComponent(startIso)}&timestamp=lte.${encodeURIComponent(endIso)}&order=timestamp.desc&limit=10`;
 
             const res = await fetch(url, { headers: HEADERS, cache: 'no-store' });
 
-            if (!res.ok) {
-                const errDetail = await res.text();
-                console.error("Supabase Query Error:", errDetail);
-                throw new Error("Gagal mengambil status presensi");
-            }
+            if (!res.ok) throw new Error("Gagal mengambil status presensi");
             const data = await res.json();
 
             if (!data || data.length === 0) {
@@ -110,7 +104,6 @@ export const ApiService = {
                 approvalStatus: pengajuanRec ? pengajuanRec.status_approval_hr : lastRec.status_approval_hr
             };
         } catch (err) {
-            console.error("Check Today Status Catch Error:", err);
             return { status: 'ERROR_CHECKING', hasClockIn: false, hasClockOut: false, hasPengajuan: false, clockInShift: null, pengajuanType: null, approvalStatus: null };
         }
     },
@@ -193,40 +186,46 @@ export const ApiService = {
         }
     },
 
+    // UPDATE APPROVAL DENGAN VERIFIKASI ARRAY DARI SUPABASE
     async updateApproval({ rowId, karyawanNama, approvalStatus, alasanReject, jenisPengajuan, jumlahHari }) {
         try {
+            const targetStatus = approvalStatus === 'Approved' ? 'DI ACC' : 'DI REJECT';
             const url = `${SUPABASE_URL}/rest/v1/log_absensi?id=eq.${rowId}`;
 
-            const tasks = [
-                fetch(url, {
-                    method: 'PATCH',
-                    headers: {
-                        ...HEADERS,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=representation'
-                    },
-                    body: JSON.stringify({
-                        status_approval_hr: approvalStatus === 'Approved' ? 'DI ACC' : 'DI REJECT',
-                        alasan_penolakan_hr: alasanReject || '-',
-                        is_anomaly: false
-                    })
+            const resLog = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    ...HEADERS,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify({
+                    status_approval_hr: targetStatus,
+                    alasan_penolakan_hr: alasanReject || '-',
+                    is_anomaly: false
                 })
-            ];
+            });
 
-            if (approvalStatus === 'Approved' && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
-                tasks.push(this.deductLeaveBalance(karyawanNama, jumlahHari || 1));
+            if (!resLog.ok) return false;
+            const updatedRows = await resLog.json();
+
+            // Verifikasi apakah Supabase benar-benar mengubah data (panjang array > 0)
+            if (!updatedRows || updatedRows.length === 0) {
+                console.warn("Supabase PATCH 0 row modified for ID:", rowId);
             }
 
-            const [resLog] = await Promise.all(tasks);
+            if (approvalStatus === 'Approved' && jenisPengajuan && jenisPengajuan.includes('Cuti')) {
+                await this.deductLeaveBalance(karyawanNama, jumlahHari || 1);
+            }
 
             this.submitToAppsScriptBackground({
                 action: 'update_approval',
                 rowId: rowId,
-                approvalStatus: approvalStatus,
+                approvalStatus: targetStatus,
                 alasanReject: alasanReject || '-'
             });
 
-            return resLog.ok;
+            return true;
         } catch (err) {
             console.error("Update approval error:", err);
             return false;

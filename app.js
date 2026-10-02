@@ -1,6 +1,5 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - REAL-TIME EVENT HANDLER
-// Dynamic State Lock, Safe Memory Lookups, and Automatic Leave Sync
+// APP CONTROLLER (app.js) - COMPLETE PRESENSI & SPREADSHEET DISPATCHER
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -472,7 +471,7 @@ window.clearSelectedFile = function() {
     document.getElementById('filePreviewBadge').classList.remove('flex');
 };
 
-// SUBMIT PRESENSI
+// EKSEKUSI SUBMIT PRESENSI PRESISI
 window.submitPresensi = async function() {
     if (!navigator.onLine) return showToast('⚠️ Koneksi terputus!', 'error');
     if (isCheckingStatus) return showToast('Mohon tunggu validasi...', 'error');
@@ -500,7 +499,7 @@ window.submitPresensi = async function() {
     }
 
     if (currentMode === 'Clock Out' && detailCached.hasClockOut) {
-        showToast(`⚠️️ Sales ${karyawanNama} SUDAH Clock Out hari ini!`, 'error');
+        showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock Out hari ini!`, 'error');
         return;
     }
 
@@ -552,6 +551,7 @@ window.submitPresensi = async function() {
         btnText.textContent = 'MENGIRIM...';
         const isoTimestamp = new Date().toISOString();
 
+        // 1. Simpan ke Database Supabase
         const supabasePayload = {
             timestamp: isoTimestamp,
             nama_store: storeNama.trim(),
@@ -576,6 +576,7 @@ window.submitPresensi = async function() {
         window.clearSelectedFile();
         window.resetCamera();
 
+        // 2. Dispatch data ke Google Spreadsheet & Google Drive
         ApiService.submitToAppsScriptBackground({
             supabaseId: createdRecordId,
             timestamp: isoTimestamp,

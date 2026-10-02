@@ -1,6 +1,6 @@
 // =========================================================================
-// APP CONTROLLER (app.js) - STRICT EVENT HANDLER & UI LOCK
-// Safe Object Binding, Real-Time State Lock, & Accurate HR Approval Flow
+// APP CONTROLLER (app.js) - REAL-TIME EVENT HANDLER
+// Dynamic State Lock, Safe Memory Lookups, and Automatic Leave Sync
 // =========================================================================
 
 import { ApiService } from './modules/api.js';
@@ -154,7 +154,6 @@ window.onKaryawanChange = async function() {
     const detail = await ApiService.checkTodayStatusDetail(karyawanNama, storeNama);
     isCheckingStatus = false;
 
-    // Nilai sisa cuti terhitung otomatis dari database Supabase
     selectedEmployeeSisaCuti = detail.sisaCuti !== undefined ? detail.sisaCuti : 12;
 
     if (badgeCuti) {
@@ -501,7 +500,7 @@ window.submitPresensi = async function() {
     }
 
     if (currentMode === 'Clock Out' && detailCached.hasClockOut) {
-        showToast(`⚠️ Sales ${karyawanNama} SUDAH Clock Out hari ini!`, 'error');
+        showToast(`⚠️️ Sales ${karyawanNama} SUDAH Clock Out hari ini!`, 'error');
         return;
     }
 
@@ -570,7 +569,6 @@ window.submitPresensi = async function() {
 
         const createdRecordId = await ApiService.submitToSupabase(supabasePayload);
 
-        // Refresh status & recalculate sisa cuti dari server
         await window.onKaryawanChange();
 
         showToast('🎉 Presensi/Pengajuan Berhasil Tersimpan!', 'success');
